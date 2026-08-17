@@ -6,6 +6,8 @@ The app icon is an SVG rather than a binary PNG, so the entire project can be re
 
 Filters support multiple required terms and exclusions. For example, `#work -#red -done:today` shows work-tagged commitments while excluding red-tagged commitments and anything completed today. Tap a visible hashtag to add it to the current filter, then save the view for later.
 
+Each commitment starts with its Beeminder slug and description. Its read-only status reports whether the API returned a datapoint dated today; it is not a checkbox and cannot create or modify Beeminder data.
+
 ## Run locally
 
 ```sh

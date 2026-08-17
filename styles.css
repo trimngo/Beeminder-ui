@@ -5,3 +5,5 @@
 
 /* The working list is the primary screen; keep its controls compact. */
 .views-section{padding-top:4px}.filter-help{margin:8px 5px 2px;color:var(--muted);font-size:.7rem}.filter-help button{border:0;background:#f2ede3;color:#6f5520;border-radius:6px;padding:3px 5px}.list-actions{display:flex;align-items:center;gap:9px}.icon-button.compact{width:34px;height:34px;border-radius:11px;font-size:.95rem;box-shadow:none}.tag{border:0;cursor:pointer}.tag:active,.filter-help button:active{background:#ead9a8}
+
+.goal-title-wrap h3{font-size:1.05rem}.description{margin-top:5px;white-space:normal;line-height:1.35}.today-status{flex:0 0 auto;margin-top:2px;border-radius:999px;background:#f1eee7;color:#77736a;padding:5px 8px;font-size:.63rem;font-weight:750;white-space:nowrap}.today-status::before{content:"";display:inline-block;width:6px;height:6px;margin-right:5px;border-radius:50%;background:#aaa}.today-status.complete{background:#e1f4e9;color:#218552}.today-status.complete::before{background:var(--green)}.goal-footer{margin-left:0}
