@@ -10,6 +10,8 @@ Each commitment starts with its Beeminder slug and description. Its read-only st
 
 JavaScript and CSS URLs are versioned together with the service-worker cache. This prevents an installed copy from combining new HTML with an older, incompatible script after a deployment.
 
+The footer displays the running version and checks `version.json` without using the browser cache. It reports whether the app is current, offline, or ready to reload into a newer deployment.
+
 ## Run locally
 
 ```sh
