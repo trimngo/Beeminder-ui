@@ -16,6 +16,8 @@ The Timeline tab shows every commitment as a compact column and days as vertical
 
 The look-ahead control expands future rows to 7, 14, 30, or 60 days and remembers the selection. Historical green squares are buttons: tapping one opens the entry value and its Beeminder note, including multiple entries on the same day.
 
+Future markers repeat through the whole selected range. The projection starts at the current safety buffer, then assumes one `quantum` of data is entered on each deadline and derives the conservative repeat cadence from the goal’s `rate` and `runits`. Derail datapoints are rendered as red × buttons and retain their value/note details.
+
 Authentication is shared by the entire app. When signed out, both tabs stay available but neither mode renders commitments; a single universal sign-in panel opens the connection dialog. Local sample fixtures are always marked with a prominent test-data banner.
 
 Goal cards render Beeminder’s `title` as the description and `fineprint` separately, preserving fine-print line breaks. Connected users can edit and save `title` through Beeminder’s documented goal-update endpoint. The API reference does not list `fineprint` as an update parameter, so the app intentionally presents it as read-only rather than risking a misleading local-only edit.

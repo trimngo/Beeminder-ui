@@ -1,12 +1,12 @@
 const sampleGoals = [
-  { slug: 'morning-pages', title: 'Morning pages', fineprint: 'Write 3 pages\n#morning #writing', safebuf: 0, doneToday: false, updated: 6 },
-  { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, doneToday: false, updated: 42 },
-  { slug: 'german', title: 'Practice German', fineprint: '20 sentences from a book\n#learning #deep', safebuf: 1, doneToday: true, updated: 20 },
-  { slug: 'strength', title: 'Strength training', fineprint: 'Complete today’s workout\n#health #gym', safebuf: 2, doneToday: false, updated: 180 },
-  { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, doneToday: false, updated: 320 },
-  { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, doneToday: false, updated: 90 }
+  { slug: 'morning-pages', title: 'Morning pages', fineprint: 'Write 3 pages\n#morning #writing', safebuf: 0, rate: 5, runits: 'w', quantum: 1, doneToday: false, updated: 6 },
+  { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, rate: 1, runits: 'd', quantum: 1, doneToday: false, updated: 42 },
+  { slug: 'german', title: 'Practice German', fineprint: '20 sentences from a book\n#learning #deep', safebuf: 1, rate: 3, runits: 'w', quantum: 1, doneToday: true, updated: 20 },
+  { slug: 'strength', title: 'Strength training', fineprint: 'Complete today’s workout\n#health #gym', safebuf: 2, rate: 3, runits: 'w', quantum: 1, doneToday: false, updated: 180 },
+  { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, doneToday: false, updated: 320 },
+  { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.11';
+const APP_VERSION = '1.0.12';
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
@@ -60,7 +60,7 @@ function hasDataToday(datapoints, timeZone) {
 }
 function createSampleGoals() {
   const today = todayDaystamp(state.timeZone);
-  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goalIndex + 1, comment: index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
+  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goalIndex + 1, comment: goalIndex === 1 && index === 6 ? 'DERAIL' : index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
 }
 function shiftDaystamp(daystamp, days) {
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
@@ -70,6 +70,22 @@ function dayLabel(daystamp, offset) {
   if (offset === 0) return 'Today';
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))));
   return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'numeric', day: 'numeric', timeZone: 'UTC' }).format(date);
+}
+function isDerailDatapoint(point) {
+  return Boolean(point.is_derail || point.derail || /\bderail(?:ed|ment)?\b/i.test(point.comment || ''));
+}
+function ratePerDay(goal) {
+  const unitDays = { h: 1 / 24, d: 1, w: 7, m: 30.4375, y: 365.25 };
+  const days = unitDays[goal.runits] || 1, rate = Math.abs(Number(goal.rate));
+  return Number.isFinite(rate) && rate > 0 ? rate / days : 0;
+}
+function projectedDeadlineOffsets(goal, horizon) {
+  const first = Math.max(0, Math.floor(Number(goal.safebuf) || 0)), offsets = [first];
+  const dailyRate = ratePerDay(goal), quantum = Math.abs(Number(goal.quantum)) || 1;
+  if (!dailyRate) return new Set(offsets);
+  const cadence = Math.max(1, Math.floor(quantum / dailyRate));
+  for (let offset = first + cadence; offset <= horizon; offset += cadence) offsets.push(offset);
+  return new Set(offsets);
 }
 function urgency(goal) {
   if (goal.safebuf <= 0) return { color: '#ef5b4c', label: 'Due today' };
@@ -139,7 +155,7 @@ function showDatapointTooltip(goal, daystamp, datapoints) {
   const content = $('#datapoint-tooltip-content'); content.innerHTML = '';
   datapoints.forEach(point => {
     const entry = document.createElement('div'); entry.className = 'datapoint-detail';
-    const value = document.createElement('strong'); value.textContent = point.value === undefined || point.value === null ? 'Data entered' : `Value: ${point.value}`;
+    const value = document.createElement('strong'), derailed = isDerailDatapoint(point); entry.classList.toggle('derail', derailed); value.textContent = `${derailed ? 'Derailment' : 'Data entered'}${point.value === undefined || point.value === null ? '' : ` · Value: ${point.value}`}`;
     const note = document.createElement('p'); note.textContent = point.comment?.trim() || 'No note for this entry.';
     entry.append(value, note); content.append(entry);
   });
@@ -163,9 +179,9 @@ function renderTimeline() {
     goals.forEach(goal => {
       const cell = document.createElement('div'); cell.className = `history-cell${offset === 0 ? ' today' : ''}`;
       const dayData = goal.datapoints.filter(point => point.daystamp === daystamp), hasData = dayData.length > 0;
-      const dueOffset = Math.max(0, Math.floor(goal.safebuf));
-      if (hasData) { const mark = document.createElement('button'); mark.type = 'button'; mark.className = 'cell-mark history'; mark.setAttribute('aria-label', `${goal.slug}: show ${dayData.length} data ${dayData.length === 1 ? 'entry' : 'entries'}`); mark.onclick = () => showDatapointTooltip(goal, daystamp, dayData); cell.append(mark); }
-      else if (offset >= 0 && offset === dueOffset) { const mark = document.createElement('span'); mark.className = `cell-mark due${dueOffset <= 1 ? ' urgent' : ''}`; mark.title = `${goal.slug}: deadline`; cell.append(mark); }
+      const projectedDeadlines = projectedDeadlineOffsets(goal, state.futureDays);
+      if (hasData) { const derailed = dayData.some(isDerailDatapoint), mark = document.createElement('button'); mark.type = 'button'; mark.className = `cell-mark ${derailed ? 'derail' : 'history'}`; mark.textContent = derailed ? '×' : ''; mark.setAttribute('aria-label', `${goal.slug}: ${derailed ? 'derailment' : `show ${dayData.length} data ${dayData.length === 1 ? 'entry' : 'entries'}`}`); mark.onclick = () => showDatapointTooltip(goal, daystamp, dayData); cell.append(mark); }
+      else if (offset >= 0 && projectedDeadlines.has(offset)) { const mark = document.createElement('span'); mark.className = `cell-mark due${offset <= 1 ? ' urgent' : ''}`; mark.title = `${goal.slug}: projected minimum-action deadline`; cell.append(mark); }
       grid.append(cell);
     });
   });
@@ -233,7 +249,7 @@ $('#settings-form').onsubmit = async event => {
     const timeZone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
     state.timeZone = timeZone; localStorage.setItem('bee-timezone', timeZone);
     state.usingSample = false;
-    state.goals = data.goals.map(goal => normalizeGoal({ slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '', safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99, datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone), updated: Date.now() / 60000 - (goal.updated_at || 0) / 60 }));
+    state.goals = data.goals.map(goal => normalizeGoal({ slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '', safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99, rate: goal.rate, runits: goal.runits, quantum: goal.quantum, datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone), updated: Date.now() / 60000 - (goal.updated_at || 0) / 60 }));
     persistGoals(); $('#updated-label').textContent = 'Updated just now'; els.settingsDialog.close(); render(); toast('Goals refreshed');
   } catch (error) { toast(error.message); } finally { $('#connect-button').textContent = 'Connect & refresh'; }
 };
