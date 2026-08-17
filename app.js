@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.9';
+const APP_VERSION = '1.0.10';
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
@@ -41,6 +41,13 @@ function loadLocalGoals() {
   render(); renderTimeline();
 }
 function persistGoals() { localStorage.setItem('bee-goals', JSON.stringify(state.goals)); }
+function isConnected() { return state.usingSample || Boolean(localStorage.getItem('bee-user') && localStorage.getItem('bee-token')); }
+function updateAuthUI() {
+  const connected = isConnected();
+  $('#auth-gate').hidden = connected; $('#test-data-banner').hidden = !state.usingSample;
+  $('#list-view').hidden = !connected || state.mode !== 'list';
+  $('#timeline-view').hidden = !connected || state.mode !== 'timeline';
+}
 function todayDaystamp(timeZone) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
     .formatToParts(new Date()).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
@@ -111,25 +118,24 @@ function render() {
     });
     els.list.append(node);
   });
-  const connected = state.usingSample || Boolean(localStorage.getItem('bee-user') && localStorage.getItem('bee-token'));
+  const connected = isConnected();
   els.empty.hidden = goals.length > 0;
   $('#empty-title').textContent = connected ? 'All clear' : 'Sign in to get started';
   $('#empty-copy').textContent = connected ? 'No commitments match this view.' : 'Connect your Beeminder account to load your commitments.';
   $('#empty-icon').textContent = connected ? '✓' : '→';
   $('#reset-filters').hidden = !connected; $('#empty-connect').hidden = connected;
   els.doneFilter.setAttribute('aria-pressed', state.hideDone);
-  els.search.value = state.query; els.clear.hidden = !state.query; renderViews(); renderTimeline();
+  els.search.value = state.query; els.clear.hidden = !state.query; renderViews(); renderTimeline(); updateAuthUI();
 }
 function setMode(mode) {
   state.mode = mode; localStorage.setItem('bee-mode', mode);
-  $('#list-view').hidden = mode !== 'list'; $('#timeline-view').hidden = mode !== 'timeline';
   $('#list-tab').classList.toggle('active', mode === 'list'); $('#timeline-tab').classList.toggle('active', mode === 'timeline');
   $('#list-tab').setAttribute('aria-selected', mode === 'list'); $('#timeline-tab').setAttribute('aria-selected', mode === 'timeline');
-  if (mode === 'timeline') renderTimeline();
+  if (mode === 'timeline') renderTimeline(); updateAuthUI();
 }
 function renderTimeline() {
   const host = $('#timeline-scroll'); if (!host) return; host.innerHTML = '';
-  const connected = state.usingSample || Boolean(localStorage.getItem('bee-user') && localStorage.getItem('bee-token'));
+  const connected = isConnected();
   if (!connected) {
     const prompt = document.createElement('div'); prompt.className = 'timeline-prompt'; prompt.innerHTML = '<strong>Sign in to see your timeline</strong><span>Commitment history comes from your Beeminder datapoints.</span>';
     const button = document.createElement('button'); button.className = 'primary-button'; button.textContent = 'Sign in to Beeminder'; button.onclick = () => els.settingsDialog.showModal(); prompt.append(button); host.append(prompt); return;
@@ -196,6 +202,7 @@ $('#timeline-settings').onclick = $('#settings-button').onclick;
 $('#list-tab').onclick = () => setMode('list');
 $('#timeline-tab').onclick = () => setMode('timeline');
 $('#empty-connect').onclick = () => els.settingsDialog.showModal();
+$('#auth-gate-button').onclick = () => els.settingsDialog.showModal();
 $('#save-view-button').onclick = () => els.saveDialog.showModal();
 document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => addFilter(button.dataset.filter));
 $('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };

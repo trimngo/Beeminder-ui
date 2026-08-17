@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -20,6 +20,15 @@
         <button class="mode-tab active" id="list-tab" type="button" aria-selected="true">List</button>
         <button class="mode-tab" id="timeline-tab" type="button" aria-selected="false">Timeline</button>
       </nav>
+
+      <div class="test-data-banner" id="test-data-banner" hidden>LOCAL TEST DATA · NOT BEEMINDER</div>
+      <section class="auth-gate" id="auth-gate" hidden aria-labelledby="auth-gate-title">
+        <div class="auth-gate-icon">→</div>
+        <h1 id="auth-gate-title">Sign in to Beeminder</h1>
+        <p>Connect once to use your commitments in both List and Timeline modes.</p>
+        <button class="primary-button" id="auth-gate-button" type="button">Sign in to Beeminder</button>
+        <p class="privacy-note">Your username and personal token stay on this device.</p>
+      </section>
 
       <div id="list-view">
       <section class="views-section" aria-labelledby="views-heading">
@@ -63,7 +72,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.9</span>
+        <span id="version-label">Version 1.0.10</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -122,6 +131,6 @@
     </article>
   </template>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
