@@ -10,12 +10,18 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <link rel="stylesheet" href="styles.css?v=9" />
   <title>Bee Today</title>
 </head>
 <body>
   <div class="app-shell">
     <main>
+      <nav class="mode-tabs" aria-label="View mode">
+        <button class="mode-tab active" id="list-tab" type="button" aria-selected="true">List</button>
+        <button class="mode-tab" id="timeline-tab" type="button" aria-selected="false">Timeline</button>
+      </nav>
+
+      <div id="list-view">
       <section class="views-section" aria-labelledby="views-heading">
         <div class="section-heading">
           <h2 id="views-heading">Saved views</h2>
@@ -57,9 +63,19 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.8</span>
+        <span id="version-label">Version 1.0.9</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
+      </div>
+
+      <section id="timeline-view" class="timeline-view" aria-labelledby="timeline-heading" hidden>
+        <div class="timeline-toolbar">
+          <div><h2 id="timeline-heading">Commitment history</h2><p>Past 14 days · next 7 days</p></div>
+          <button class="icon-button compact" id="timeline-settings" aria-label="Open settings">⚙</button>
+        </div>
+        <div class="timeline-legend"><span><i class="history-mark"></i>Data entered</span><span><i class="due-mark"></i>Upcoming deadline</span></div>
+        <div class="timeline-scroll" id="timeline-scroll"></div>
+      </section>
     </main>
   </div>
 
@@ -106,6 +122,6 @@
     </article>
   </template>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

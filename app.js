@@ -6,11 +6,13 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.9';
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
+const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
 const state = {
   goals: [], query: '', hideDone: true, sort: 'urgency', activeView: 'all', editingSlug: null, usingSample: false,
+  mode: IS_LOCAL_TEST && TEST_PARAMS.get('mode') === 'timeline' ? 'timeline' : localStorage.getItem('bee-mode') || 'list', timeZone: localStorage.getItem('bee-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
   views: JSON.parse(localStorage.getItem('bee-views') || '[]')
 };
 const els = {
@@ -22,9 +24,12 @@ const els = {
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
 function normalizeGoal(goal) {
   // Migrate goals cached by older releases, where fine print was stored as `description`.
-  return { ...goal, title: cleanText(goal.title || goal.slug), fineprint: cleanText(goal.fineprint ?? goal.description ?? '') };
+  return { ...goal, title: cleanText(goal.title || goal.slug), fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
 }
 function loadLocalGoals() {
+  if (IS_LOCAL_TEST && TEST_PARAMS.get('sample') === '1') {
+    state.usingSample = true; state.goals = createSampleGoals(); $('#updated-label').textContent = 'Local test data'; render(); return;
+  }
   if (!localStorage.getItem('bee-user') || !localStorage.getItem('bee-token')) {
     state.goals = [];
     render();
@@ -33,7 +38,7 @@ function loadLocalGoals() {
   const stored = localStorage.getItem('bee-goals');
   state.goals = (stored ? JSON.parse(stored) : []).map(normalizeGoal);
   $('#updated-label').textContent = stored ? 'Saved on this device' : 'Connected';
-  render();
+  render(); renderTimeline();
 }
 function persistGoals() { localStorage.setItem('bee-goals', JSON.stringify(state.goals)); }
 function todayDaystamp(timeZone) {
@@ -44,6 +49,19 @@ function todayDaystamp(timeZone) {
 function hasDataToday(datapoints, timeZone) {
   const today = todayDaystamp(timeZone);
   return Array.isArray(datapoints) && datapoints.some(point => point.daystamp === today);
+}
+function createSampleGoals() {
+  const today = todayDaystamp(state.timeZone);
+  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index) })) }));
+}
+function shiftDaystamp(daystamp, days) {
+  const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
+  return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+function dayLabel(daystamp, offset) {
+  if (offset === 0) return 'Today';
+  const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))));
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'numeric', day: 'numeric', timeZone: 'UTC' }).format(date);
 }
 function urgency(goal) {
   if (goal.safebuf <= 0) return { color: '#ef5b4c', label: 'Due today' };
@@ -100,7 +118,38 @@ function render() {
   $('#empty-icon').textContent = connected ? '✓' : '→';
   $('#reset-filters').hidden = !connected; $('#empty-connect').hidden = connected;
   els.doneFilter.setAttribute('aria-pressed', state.hideDone);
-  els.search.value = state.query; els.clear.hidden = !state.query; renderViews();
+  els.search.value = state.query; els.clear.hidden = !state.query; renderViews(); renderTimeline();
+}
+function setMode(mode) {
+  state.mode = mode; localStorage.setItem('bee-mode', mode);
+  $('#list-view').hidden = mode !== 'list'; $('#timeline-view').hidden = mode !== 'timeline';
+  $('#list-tab').classList.toggle('active', mode === 'list'); $('#timeline-tab').classList.toggle('active', mode === 'timeline');
+  $('#list-tab').setAttribute('aria-selected', mode === 'list'); $('#timeline-tab').setAttribute('aria-selected', mode === 'timeline');
+  if (mode === 'timeline') renderTimeline();
+}
+function renderTimeline() {
+  const host = $('#timeline-scroll'); if (!host) return; host.innerHTML = '';
+  const connected = state.usingSample || Boolean(localStorage.getItem('bee-user') && localStorage.getItem('bee-token'));
+  if (!connected) {
+    const prompt = document.createElement('div'); prompt.className = 'timeline-prompt'; prompt.innerHTML = '<strong>Sign in to see your timeline</strong><span>Commitment history comes from your Beeminder datapoints.</span>';
+    const button = document.createElement('button'); button.className = 'primary-button'; button.textContent = 'Sign in to Beeminder'; button.onclick = () => els.settingsDialog.showModal(); prompt.append(button); host.append(prompt); return;
+  }
+  const goals = state.goals, today = todayDaystamp(state.timeZone), offsets = Array.from({ length: 22 }, (_, index) => 7 - index);
+  const grid = document.createElement('div'); grid.className = 'history-grid'; grid.style.setProperty('--goal-count', Math.max(goals.length, 1));
+  const corner = document.createElement('div'); corner.className = 'history-corner'; corner.textContent = 'Day'; grid.append(corner);
+  goals.forEach(goal => { const cell = document.createElement('div'); cell.className = 'history-goal'; cell.title = goal.slug; const label = document.createElement('span'); label.textContent = goal.slug; cell.append(label); grid.append(cell); });
+  offsets.forEach(offset => {
+    const daystamp = shiftDaystamp(today, offset), label = document.createElement('div'); label.className = `history-day${offset === 0 ? ' today' : ''}`; label.textContent = dayLabel(daystamp, offset); grid.append(label);
+    goals.forEach(goal => {
+      const cell = document.createElement('div'); cell.className = `history-cell${offset === 0 ? ' today' : ''}`;
+      const hasData = goal.datapoints.some(point => point.daystamp === daystamp);
+      const dueOffset = Math.max(0, Math.floor(goal.safebuf));
+      if (hasData) { const mark = document.createElement('span'); mark.className = 'cell-mark history'; mark.title = `${goal.slug}: data entered`; cell.append(mark); }
+      else if (offset >= 0 && offset === dueOffset) { const mark = document.createElement('span'); mark.className = `cell-mark due${dueOffset <= 1 ? ' urgent' : ''}`; mark.title = `${goal.slug}: deadline`; cell.append(mark); }
+      grid.append(cell);
+    });
+  });
+  host.append(grid);
 }
 function renderViews() {
   els.chips.innerHTML = '';
@@ -143,6 +192,9 @@ els.doneFilter.onclick = () => { state.hideDone = !state.hideDone; state.activeV
 els.sort.onchange = event => { state.sort = event.target.value; render(); };
 $('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; render(); };
 $('#settings-button').onclick = () => { $('#username').value = localStorage.getItem('bee-user') || ''; $('#auth-token').value = localStorage.getItem('bee-token') || ''; els.settingsDialog.showModal(); };
+$('#timeline-settings').onclick = $('#settings-button').onclick;
+$('#list-tab').onclick = () => setMode('list');
+$('#timeline-tab').onclick = () => setMode('timeline');
 $('#empty-connect').onclick = () => els.settingsDialog.showModal();
 $('#save-view-button').onclick = () => els.saveDialog.showModal();
 document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => addFilter(button.dataset.filter));
@@ -156,14 +208,16 @@ $('#settings-form').onsubmit = async event => {
     const url = `https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}.json?auth_token=${encodeURIComponent(token)}&associations=true&emaciated=true&datapoints_count=100`;
     const response = await fetch(url); if (!response.ok) throw new Error('Could not connect'); const data = await response.json();
     const timeZone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    state.timeZone = timeZone; localStorage.setItem('bee-timezone', timeZone);
     state.usingSample = false;
-    state.goals = data.goals.map(goal => normalizeGoal({ slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '', safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99, doneToday: hasDataToday(goal.datapoints, timeZone), updated: Date.now() / 60000 - (goal.updated_at || 0) / 60 }));
+    state.goals = data.goals.map(goal => normalizeGoal({ slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '', safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99, datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone), updated: Date.now() / 60000 - (goal.updated_at || 0) / 60 }));
     persistGoals(); $('#updated-label').textContent = 'Updated just now'; els.settingsDialog.close(); render(); toast('Goals refreshed');
   } catch (error) { toast(error.message); } finally { $('#connect-button').textContent = 'Connect & refresh'; }
 };
 $('#disconnect-button').onclick = () => { localStorage.removeItem('bee-user'); localStorage.removeItem('bee-token'); localStorage.removeItem('bee-goals'); state.goals = []; state.usingSample = false; $('#updated-label').textContent = 'Not connected'; els.settingsDialog.close(); render(); toast('Signed out on this device'); };
 if (IS_LOCAL_TEST) $('#sample-button').hidden = false;
-$('#sample-button').onclick = () => { if (!IS_LOCAL_TEST) return; state.usingSample = true; state.goals = sampleGoals.map(goal => ({ ...goal })); $('#updated-label').textContent = 'Local test data'; els.settingsDialog.close(); render(); toast('Showing local test data'); };
+$('#sample-button').onclick = () => { if (!IS_LOCAL_TEST) return; state.usingSample = true; state.goals = createSampleGoals(); $('#updated-label').textContent = 'Local test data'; els.settingsDialog.close(); render(); toast('Showing local test data'); };
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
 $('#version-label').textContent = `Version ${APP_VERSION}`; $('#update-button').onclick = checkForUpdates; window.addEventListener('load', checkForUpdates); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdates(); });
 loadLocalGoals();
+setMode(state.mode);
