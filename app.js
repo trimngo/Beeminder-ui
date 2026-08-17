@@ -6,10 +6,11 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
+const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const $ = selector => document.querySelector(selector);
 const state = {
-  goals: [], query: '', hideDone: true, sort: 'urgency', activeView: 'all', editingSlug: null,
+  goals: [], query: '', hideDone: true, sort: 'urgency', activeView: 'all', editingSlug: null, usingSample: false,
   views: JSON.parse(localStorage.getItem('bee-views') || '[]')
 };
 const els = {
@@ -24,8 +25,14 @@ function normalizeGoal(goal) {
   return { ...goal, title: cleanText(goal.title || goal.slug), fineprint: cleanText(goal.fineprint ?? goal.description ?? '') };
 }
 function loadLocalGoals() {
+  if (!localStorage.getItem('bee-user') || !localStorage.getItem('bee-token')) {
+    state.goals = [];
+    render();
+    return;
+  }
   const stored = localStorage.getItem('bee-goals');
-  state.goals = (stored ? JSON.parse(stored) : sampleGoals.map(goal => ({ ...goal }))).map(normalizeGoal);
+  state.goals = (stored ? JSON.parse(stored) : []).map(normalizeGoal);
+  $('#updated-label').textContent = stored ? 'Saved on this device' : 'Connected';
   render();
 }
 function persistGoals() { localStorage.setItem('bee-goals', JSON.stringify(state.goals)); }
@@ -86,7 +93,13 @@ function render() {
     });
     els.list.append(node);
   });
-  els.empty.hidden = goals.length > 0; els.doneFilter.setAttribute('aria-pressed', state.hideDone);
+  const connected = state.usingSample || Boolean(localStorage.getItem('bee-user') && localStorage.getItem('bee-token'));
+  els.empty.hidden = goals.length > 0;
+  $('#empty-title').textContent = connected ? 'All clear' : 'Sign in to get started';
+  $('#empty-copy').textContent = connected ? 'No commitments match this view.' : 'Connect your Beeminder account to load your commitments.';
+  $('#empty-icon').textContent = connected ? '✓' : '→';
+  $('#reset-filters').hidden = !connected; $('#empty-connect').hidden = connected;
+  els.doneFilter.setAttribute('aria-pressed', state.hideDone);
   els.search.value = state.query; els.clear.hidden = !state.query; renderViews();
 }
 function renderViews() {
@@ -130,6 +143,7 @@ els.doneFilter.onclick = () => { state.hideDone = !state.hideDone; state.activeV
 els.sort.onchange = event => { state.sort = event.target.value; render(); };
 $('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; render(); };
 $('#settings-button').onclick = () => { $('#username').value = localStorage.getItem('bee-user') || ''; $('#auth-token').value = localStorage.getItem('bee-token') || ''; els.settingsDialog.showModal(); };
+$('#empty-connect').onclick = () => els.settingsDialog.showModal();
 $('#save-view-button').onclick = () => els.saveDialog.showModal();
 document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => addFilter(button.dataset.filter));
 $('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };
@@ -142,11 +156,14 @@ $('#settings-form').onsubmit = async event => {
     const url = `https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}.json?auth_token=${encodeURIComponent(token)}&associations=true&emaciated=true&datapoints_count=100`;
     const response = await fetch(url); if (!response.ok) throw new Error('Could not connect'); const data = await response.json();
     const timeZone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    state.usingSample = false;
     state.goals = data.goals.map(goal => normalizeGoal({ slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '', safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99, doneToday: hasDataToday(goal.datapoints, timeZone), updated: Date.now() / 60000 - (goal.updated_at || 0) / 60 }));
     persistGoals(); $('#updated-label').textContent = 'Updated just now'; els.settingsDialog.close(); render(); toast('Goals refreshed');
   } catch (error) { toast(error.message); } finally { $('#connect-button').textContent = 'Connect & refresh'; }
 };
-$('#sample-button').onclick = () => { localStorage.removeItem('bee-user'); localStorage.removeItem('bee-token'); state.goals = sampleGoals.map(goal => ({ ...goal })); persistGoals(); $('#updated-label').textContent = 'Sample data'; els.settingsDialog.close(); render(); toast('Showing sample goals'); };
+$('#disconnect-button').onclick = () => { localStorage.removeItem('bee-user'); localStorage.removeItem('bee-token'); localStorage.removeItem('bee-goals'); state.goals = []; state.usingSample = false; $('#updated-label').textContent = 'Not connected'; els.settingsDialog.close(); render(); toast('Signed out on this device'); };
+if (IS_LOCAL_TEST) $('#sample-button').hidden = false;
+$('#sample-button').onclick = () => { if (!IS_LOCAL_TEST) return; state.usingSample = true; state.goals = sampleGoals.map(goal => ({ ...goal })); $('#updated-label').textContent = 'Local test data'; els.settingsDialog.close(); render(); toast('Showing local test data'); };
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
 $('#version-label').textContent = `Version ${APP_VERSION}`; $('#update-button').onclick = checkForUpdates; window.addEventListener('load', checkForUpdates); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdates(); });
 loadLocalGoals();

@@ -10,6 +10,8 @@ Each commitment starts with its Beeminder slug and description. Its read-only st
 
 The app loads goals and recent datapoints through Beeminder’s user-associations response. A goal counts as done today when a returned datapoint’s `daystamp` matches today in the Beeminder account’s timezone, rather than the browser’s timezone.
 
+Production deployments never fall back to sample commitments: signed-out users see a Beeminder sign-in prompt. Sample data is available only when the app is served from `localhost` or `127.0.0.1` for local UI testing.
+
 Goal cards render Beeminder’s `title` as the description and `fineprint` separately, preserving fine-print line breaks. Connected users can edit and save `title` through Beeminder’s documented goal-update endpoint. The API reference does not list `fineprint` as an update parameter, so the app intentionally presents it as read-only rather than risking a misleading local-only edit.
 
 JavaScript and CSS URLs are versioned together with the service-worker cache. This prevents an installed copy from combining new HTML with an older, incompatible script after a deployment.

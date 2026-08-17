@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=8" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -46,17 +46,18 @@
       <section class="commitments" aria-labelledby="commitments-heading">
         <div class="section-heading list-heading">
           <h2 id="commitments-heading">Commitments</h2>
-          <div class="list-actions"><span id="updated-label">Sample data</span><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
+          <div class="list-actions"><span id="updated-label">Not connected</span><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
         </div>
         <div id="goal-list" class="goal-list"></div>
         <div id="empty-state" class="empty-state" hidden>
-          <div>✓</div><h3>All clear</h3><p>No commitments match this view.</p>
+          <div id="empty-icon">✓</div><h3 id="empty-title">All clear</h3><p id="empty-copy">No commitments match this view.</p>
           <button class="secondary-button" id="reset-filters">Reset filters</button>
+          <button class="primary-button empty-connect" id="empty-connect" hidden>Sign in to Beeminder</button>
         </div>
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.7</span>
+        <span id="version-label">Version 1.0.8</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
     </main>
@@ -79,7 +80,8 @@
       <label class="field">Personal auth token<input id="auth-token" type="password" autocomplete="off" placeholder="••••••••••••" /></label>
       <p class="privacy-note">Find your token in Beeminder → Account settings. This static app has no server.</p>
       <button value="default" class="primary-button" id="connect-button">Connect & refresh</button>
-      <button type="button" class="secondary-button full" id="sample-button">Use sample data</button>
+      <button type="button" class="secondary-button full" id="disconnect-button">Sign out on this device</button>
+      <button type="button" class="secondary-button full" id="sample-button" hidden>Use sample data (local testing)</button>
     </form>
   </dialog>
 
@@ -104,6 +106,6 @@
     </article>
   </template>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
