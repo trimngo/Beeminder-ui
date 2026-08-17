@@ -14,6 +14,8 @@ Production deployments never fall back to sample commitments: signed-out users s
 
 The Timeline tab shows every commitment as a compact column and days as vertical rows. It plots historical datapoints and the next estimated deadline from each goal’s safety buffer; its rotated commitment header remains frozen while the day rows scroll.
 
+The look-ahead control expands future rows to 7, 14, 30, or 60 days and remembers the selection. Historical green squares are buttons: tapping one opens the entry value and its Beeminder note, including multiple entries on the same day.
+
 Authentication is shared by the entire app. When signed out, both tabs stay available but neither mode renders commitments; a single universal sign-in panel opens the connection dialog. Local sample fixtures are always marked with a prominent test-data banner.
 
 Goal cards render Beeminder’s `title` as the description and `fineprint` separately, preserving fine-print line breaks. Connected users can edit and save `title` through Beeminder’s documented goal-update endpoint. The API reference does not list `fineprint` as an update parameter, so the app intentionally presents it as read-only rather than risking a misleading local-only edit.

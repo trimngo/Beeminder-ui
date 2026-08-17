@@ -6,13 +6,14 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.10';
+const APP_VERSION = '1.0.11';
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
 const state = {
   goals: [], query: '', hideDone: true, sort: 'urgency', activeView: 'all', editingSlug: null, usingSample: false,
   mode: IS_LOCAL_TEST && TEST_PARAMS.get('mode') === 'timeline' ? 'timeline' : localStorage.getItem('bee-mode') || 'list', timeZone: localStorage.getItem('bee-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
+  futureDays: IS_LOCAL_TEST && TEST_PARAMS.get('future') ? Number(TEST_PARAMS.get('future')) : Number(localStorage.getItem('bee-future-days')) || 7,
   views: JSON.parse(localStorage.getItem('bee-views') || '[]')
 };
 const els = {
@@ -59,7 +60,7 @@ function hasDataToday(datapoints, timeZone) {
 }
 function createSampleGoals() {
   const today = todayDaystamp(state.timeZone);
-  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index) })) }));
+  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goalIndex + 1, comment: index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
 }
 function shiftDaystamp(daystamp, days) {
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
@@ -131,8 +132,20 @@ function setMode(mode) {
   state.mode = mode; localStorage.setItem('bee-mode', mode);
   $('#list-tab').classList.toggle('active', mode === 'list'); $('#timeline-tab').classList.toggle('active', mode === 'timeline');
   $('#list-tab').setAttribute('aria-selected', mode === 'list'); $('#timeline-tab').setAttribute('aria-selected', mode === 'timeline');
-  if (mode === 'timeline') renderTimeline(); updateAuthUI();
+  if (mode === 'timeline') renderTimeline(); else closeDatapointTooltip(); updateAuthUI();
 }
+function showDatapointTooltip(goal, daystamp, datapoints) {
+  $('#datapoint-tooltip-title').textContent = `${goal.slug} · ${dayLabel(daystamp, daystamp === todayDaystamp(state.timeZone) ? 0 : 1)}`;
+  const content = $('#datapoint-tooltip-content'); content.innerHTML = '';
+  datapoints.forEach(point => {
+    const entry = document.createElement('div'); entry.className = 'datapoint-detail';
+    const value = document.createElement('strong'); value.textContent = point.value === undefined || point.value === null ? 'Data entered' : `Value: ${point.value}`;
+    const note = document.createElement('p'); note.textContent = point.comment?.trim() || 'No note for this entry.';
+    entry.append(value, note); content.append(entry);
+  });
+  $('#datapoint-tooltip').hidden = false;
+}
+function closeDatapointTooltip() { $('#datapoint-tooltip').hidden = true; }
 function renderTimeline() {
   const host = $('#timeline-scroll'); if (!host) return; host.innerHTML = '';
   const connected = isConnected();
@@ -140,7 +153,8 @@ function renderTimeline() {
     const prompt = document.createElement('div'); prompt.className = 'timeline-prompt'; prompt.innerHTML = '<strong>Sign in to see your timeline</strong><span>Commitment history comes from your Beeminder datapoints.</span>';
     const button = document.createElement('button'); button.className = 'primary-button'; button.textContent = 'Sign in to Beeminder'; button.onclick = () => els.settingsDialog.showModal(); prompt.append(button); host.append(prompt); return;
   }
-  const goals = state.goals, today = todayDaystamp(state.timeZone), offsets = Array.from({ length: 22 }, (_, index) => 7 - index);
+  $('#future-days').value = String(state.futureDays);
+  const goals = state.goals, today = todayDaystamp(state.timeZone), offsets = Array.from({ length: state.futureDays + 15 }, (_, index) => state.futureDays - index);
   const grid = document.createElement('div'); grid.className = 'history-grid'; grid.style.setProperty('--goal-count', Math.max(goals.length, 1));
   const corner = document.createElement('div'); corner.className = 'history-corner'; corner.textContent = 'Day'; grid.append(corner);
   goals.forEach(goal => { const cell = document.createElement('div'); cell.className = 'history-goal'; cell.title = goal.slug; const label = document.createElement('span'); label.textContent = goal.slug; cell.append(label); grid.append(cell); });
@@ -148,9 +162,9 @@ function renderTimeline() {
     const daystamp = shiftDaystamp(today, offset), label = document.createElement('div'); label.className = `history-day${offset === 0 ? ' today' : ''}`; label.textContent = dayLabel(daystamp, offset); grid.append(label);
     goals.forEach(goal => {
       const cell = document.createElement('div'); cell.className = `history-cell${offset === 0 ? ' today' : ''}`;
-      const hasData = goal.datapoints.some(point => point.daystamp === daystamp);
+      const dayData = goal.datapoints.filter(point => point.daystamp === daystamp), hasData = dayData.length > 0;
       const dueOffset = Math.max(0, Math.floor(goal.safebuf));
-      if (hasData) { const mark = document.createElement('span'); mark.className = 'cell-mark history'; mark.title = `${goal.slug}: data entered`; cell.append(mark); }
+      if (hasData) { const mark = document.createElement('button'); mark.type = 'button'; mark.className = 'cell-mark history'; mark.setAttribute('aria-label', `${goal.slug}: show ${dayData.length} data ${dayData.length === 1 ? 'entry' : 'entries'}`); mark.onclick = () => showDatapointTooltip(goal, daystamp, dayData); cell.append(mark); }
       else if (offset >= 0 && offset === dueOffset) { const mark = document.createElement('span'); mark.className = `cell-mark due${dueOffset <= 1 ? ' urgent' : ''}`; mark.title = `${goal.slug}: deadline`; cell.append(mark); }
       grid.append(cell);
     });
@@ -201,6 +215,8 @@ $('#settings-button').onclick = () => { $('#username').value = localStorage.getI
 $('#timeline-settings').onclick = $('#settings-button').onclick;
 $('#list-tab').onclick = () => setMode('list');
 $('#timeline-tab').onclick = () => setMode('timeline');
+$('#future-days').onchange = event => { state.futureDays = Number(event.target.value); localStorage.setItem('bee-future-days', String(state.futureDays)); closeDatapointTooltip(); renderTimeline(); };
+$('#datapoint-tooltip-close').onclick = closeDatapointTooltip;
 $('#empty-connect').onclick = () => els.settingsDialog.showModal();
 $('#auth-gate-button').onclick = () => els.settingsDialog.showModal();
 $('#save-view-button').onclick = () => els.saveDialog.showModal();
@@ -228,3 +244,7 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 $('#version-label').textContent = `Version ${APP_VERSION}`; $('#update-button').onclick = checkForUpdates; window.addEventListener('load', checkForUpdates); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdates(); });
 loadLocalGoals();
 setMode(state.mode);
+if (IS_LOCAL_TEST && TEST_PARAMS.get('tooltip') === '1') {
+  const goal = state.goals.find(item => item.datapoints.length);
+  if (goal) showDatapointTooltip(goal, goal.datapoints[0].daystamp, goal.datapoints.filter(point => point.daystamp === goal.datapoints[0].daystamp));
+}

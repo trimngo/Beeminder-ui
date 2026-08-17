@@ -1,5 +1,5 @@
-const CACHE='bee-today-v10';
-const ASSETS=['./','./index.html','./styles.css?v=10','./app.js?v=10','./version.json','./manifest.webmanifest','./icons/icon.svg'];
+const CACHE='bee-today-v11';
+const ASSETS=['./','./index.html','./styles.css?v=11','./app.js?v=11','./version.json','./manifest.webmanifest','./icons/icon.svg'];
 
 self.addEventListener('install',event=>event.waitUntil(
   caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())
