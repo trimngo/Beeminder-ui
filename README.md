@@ -4,6 +4,8 @@ A mobile-first, installable Beeminder focus dashboard for GitHub Pages. It suppo
 
 The app icon is an SVG rather than a binary PNG, so the entire project can be reviewed and submitted through text-only patch systems.
 
+Filters support multiple required terms and exclusions. For example, `#work -#red -done:today` shows work-tagged commitments while excluding red-tagged commitments and anything completed today. Tap a visible hashtag to add it to the current filter, then save the view for later.
+
 ## Run locally
 
 ```sh

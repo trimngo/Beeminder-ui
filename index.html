@@ -15,22 +15,7 @@
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">BEEMINDER FOCUS</p>
-        <h1>Today</h1>
-        <p class="date" id="today-label"></p>
-      </div>
-      <button class="icon-button" id="settings-button" aria-label="Open settings">⚙</button>
-    </header>
-
     <main>
-      <section class="summary" aria-label="Commitment summary">
-        <div><strong id="visible-count">0</strong><span>in focus</span></div>
-        <div><strong id="urgent-count">0</strong><span>due soon</span></div>
-        <div><strong id="done-count">0</strong><span>done today</span></div>
-      </section>
-
       <section class="views-section" aria-labelledby="views-heading">
         <div class="section-heading">
           <h2 id="views-heading">Saved views</h2>
@@ -45,6 +30,7 @@
           <input id="search-input" type="search" placeholder="Filter by tag or keyword" autocomplete="off" />
           <button id="clear-search" aria-label="Clear search" hidden>×</button>
         </label>
+        <p class="filter-help">Try <button type="button" data-filter="#deep">#deep</button>, <button type="button" data-filter="-#red">-#red</button>, or <button type="button" data-filter="-done:today">-done:today</button></p>
         <div class="filter-row">
           <button class="filter-button" id="done-filter" aria-pressed="true"><span class="toggle-dot"></span> Hide done today</button>
           <label class="sort-control">Sort
@@ -60,7 +46,7 @@
       <section class="commitments" aria-labelledby="commitments-heading">
         <div class="section-heading list-heading">
           <h2 id="commitments-heading">Commitments</h2>
-          <span id="updated-label">Sample data</span>
+          <div class="list-actions"><span id="updated-label">Sample data</span><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
         </div>
         <div id="goal-list" class="goal-list"></div>
         <div id="empty-state" class="empty-state" hidden>
