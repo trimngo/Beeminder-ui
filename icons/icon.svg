@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Bee Today</title>
+  <desc id="description">A smiling bee on a golden background</desc>
+  <rect width="512" height="512" rx="112" fill="#f5b800"/>
+  <path d="M256 59v78" stroke="#24231f" stroke-width="24" stroke-linecap="round"/>
+  <rect x="87" y="123" width="338" height="266" rx="133" fill="#fffaf1"/>
+  <circle cx="190" cy="222" r="23" fill="#24231f"/>
+  <circle cx="322" cy="222" r="23" fill="#24231f"/>
+  <path d="M175 274c20 86 142 86 162 0" fill="none" stroke="#24231f" stroke-width="24" stroke-linecap="round"/>
+</svg>

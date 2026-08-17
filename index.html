@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fffaf1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Bee Today" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Bee Today</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">BEEMINDER FOCUS</p>
+        <h1>Today</h1>
+        <p class="date" id="today-label"></p>
+      </div>
+      <button class="icon-button" id="settings-button" aria-label="Open settings">⚙</button>
+    </header>
+
+    <main>
+      <section class="summary" aria-label="Commitment summary">
+        <div><strong id="visible-count">0</strong><span>in focus</span></div>
+        <div><strong id="urgent-count">0</strong><span>due soon</span></div>
+        <div><strong id="done-count">0</strong><span>done today</span></div>
+      </section>
+
+      <section class="views-section" aria-labelledby="views-heading">
+        <div class="section-heading">
+          <h2 id="views-heading">Saved views</h2>
+          <button class="text-button" id="save-view-button">+ Save current</button>
+        </div>
+        <div class="view-chips" id="view-chips"></div>
+      </section>
+
+      <section class="filters" aria-label="Filters">
+        <label class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="search-input" type="search" placeholder="Filter by tag or keyword" autocomplete="off" />
+          <button id="clear-search" aria-label="Clear search" hidden>×</button>
+        </label>
+        <div class="filter-row">
+          <button class="filter-button" id="done-filter" aria-pressed="true"><span class="toggle-dot"></span> Hide done today</button>
+          <label class="sort-control">Sort
+            <select id="sort-select" aria-label="Sort commitments">
+              <option value="urgency">Most urgent</option>
+              <option value="name">Name</option>
+              <option value="recent">Recently updated</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="commitments" aria-labelledby="commitments-heading">
+        <div class="section-heading list-heading">
+          <h2 id="commitments-heading">Commitments</h2>
+          <span id="updated-label">Sample data</span>
+        </div>
+        <div id="goal-list" class="goal-list"></div>
+        <div id="empty-state" class="empty-state" hidden>
+          <div>✓</div><h3>All clear</h3><p>No commitments match this view.</p>
+          <button class="secondary-button" id="reset-filters">Reset filters</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="save-dialog">
+    <form method="dialog" id="save-view-form">
+      <div class="dialog-header"><div><p class="eyebrow">QUICK ACCESS</p><h2>Save this view</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p class="dialog-copy">Save the current keyword and done filter for one-tap access.</p>
+      <label class="field">View name<input id="view-name" required maxlength="24" placeholder="e.g. Deep work" /></label>
+      <button value="default" class="primary-button">Save view</button>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog">
+    <form method="dialog" id="settings-form">
+      <div class="dialog-header"><div><p class="eyebrow">CONNECTION</p><h2>Beeminder</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p class="dialog-copy">Connect directly to the Beeminder API. Your credentials stay only on this device.</p>
+      <label class="field">Username<input id="username" autocomplete="username" placeholder="yourname" /></label>
+      <label class="field">Personal auth token<input id="auth-token" type="password" autocomplete="off" placeholder="••••••••••••" /></label>
+      <p class="privacy-note">Find your token in Beeminder → Account settings. This static app has no server.</p>
+      <button value="default" class="primary-button" id="connect-button">Connect & refresh</button>
+      <button type="button" class="secondary-button full" id="sample-button">Use sample data</button>
+    </form>
+  </dialog>
+
+  <template id="goal-template">
+    <article class="goal-card">
+      <div class="urgency-stripe"></div>
+      <div class="goal-content">
+        <div class="goal-topline"><div class="goal-icon"></div><div class="goal-title-wrap"><h3></h3><p class="description"></p></div><button class="done-button" aria-label="Toggle done today">✓</button></div>
+        <div class="goal-footer"><div class="tags"></div><div class="safety-pill"></div></div>
+      </div>
+    </article>
+  </template>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
