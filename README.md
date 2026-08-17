@@ -8,6 +8,8 @@ Filters support multiple required terms and exclusions. For example, `#work -#re
 
 Each commitment starts with its Beeminder slug and description. Its read-only status reports whether the API returned a datapoint dated today; it is not a checkbox and cannot create or modify Beeminder data.
 
+JavaScript and CSS URLs are versioned together with the service-worker cache. This prevents an installed copy from combining new HTML with an older, incompatible script after a deployment.
+
 ## Run locally
 
 ```sh
