@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.7';
 const $ = selector => document.querySelector(selector);
 const state = {
   goals: [], query: '', hideDone: true, sort: 'urgency', activeView: 'all', editingSlug: null,
@@ -29,6 +29,15 @@ function loadLocalGoals() {
   render();
 }
 function persistGoals() { localStorage.setItem('bee-goals', JSON.stringify(state.goals)); }
+function todayDaystamp(timeZone) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(new Date()).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  return `${parts.year}${parts.month}${parts.day}`;
+}
+function hasDataToday(datapoints, timeZone) {
+  const today = todayDaystamp(timeZone);
+  return Array.isArray(datapoints) && datapoints.some(point => point.daystamp === today);
+}
 function urgency(goal) {
   if (goal.safebuf <= 0) return { color: '#ef5b4c', label: 'Due today' };
   if (goal.safebuf <= 1) return { color: '#ec8f2d', label: `Safe for ${goal.safebuf} day` };
@@ -130,9 +139,10 @@ $('#settings-form').onsubmit = async event => {
   if (!user || !token) { toast('Enter username and token'); return; }
   localStorage.setItem('bee-user', user); localStorage.setItem('bee-token', token); $('#connect-button').textContent = 'Connecting…';
   try {
-    const url = `https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}/goals.json?auth_token=${encodeURIComponent(token)}&datapoints_count=1`;
+    const url = `https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}.json?auth_token=${encodeURIComponent(token)}&associations=true&emaciated=true&datapoints_count=100`;
     const response = await fetch(url); if (!response.ok) throw new Error('Could not connect'); const data = await response.json();
-    state.goals = data.map(goal => normalizeGoal({ slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '', safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99, doneToday: Array.isArray(goal.datapoints) && goal.datapoints.some(point => new Date(point.timestamp * 1000).toDateString() === new Date().toDateString()), updated: Date.now() / 60000 - (goal.updated_at || 0) / 60 }));
+    const timeZone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    state.goals = data.goals.map(goal => normalizeGoal({ slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '', safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99, doneToday: hasDataToday(goal.datapoints, timeZone), updated: Date.now() / 60000 - (goal.updated_at || 0) / 60 }));
     persistGoals(); $('#updated-label').textContent = 'Updated just now'; els.settingsDialog.close(); render(); toast('Goals refreshed');
   } catch (error) { toast(error.message); } finally { $('#connect-button').textContent = 'Connect & refresh'; }
 };

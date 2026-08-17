@@ -8,6 +8,8 @@ Filters support multiple required terms and exclusions. For example, `#work -#re
 
 Each commitment starts with its Beeminder slug and description. Its read-only status reports whether the API returned a datapoint dated today; it is not a checkbox and cannot create or modify Beeminder data.
 
+The app loads goals and recent datapoints through Beeminder’s user-associations response. A goal counts as done today when a returned datapoint’s `daystamp` matches today in the Beeminder account’s timezone, rather than the browser’s timezone.
+
 Goal cards render Beeminder’s `title` as the description and `fineprint` separately, preserving fine-print line breaks. Connected users can edit and save `title` through Beeminder’s documented goal-update endpoint. The API reference does not list `fineprint` as an update parameter, so the app intentionally presents it as read-only rather than risking a misleading local-only edit.
 
 JavaScript and CSS URLs are versioned together with the service-worker cache. This prevents an installed copy from combining new HTML with an older, incompatible script after a deployment.
