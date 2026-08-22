@@ -24,7 +24,7 @@ Goal cards render Beeminder’s `title` as the description and `fineprint` separ
 
 Connected data refreshes automatically on launch, whenever the app returns to the foreground, after a restored page or network reconnection, and every five minutes while the app is visible. API requests bypass browser caches; when a refresh cannot complete, the status explicitly says that saved data is being shown instead of silently presenting it as current.
 
-The **Copy today’s update** button refreshes Beeminder first, then copies a numbered accountability update containing each completed goal’s slug, description, and all log messages entered today. Entries without a comment are identified as having no log message.
+The compact **Copy** button in the Commitments heading refreshes Beeminder first, then copies a numbered accountability update containing each completed goal’s slug, description, and all log messages entered today. Entries without a comment are identified as having no log message. Keeping the action in the heading preserves vertical space for the goal list.
 
 JavaScript and CSS URLs are versioned together with the service-worker cache. This prevents an installed copy from combining new HTML with an older, incompatible script after a deployment.
 

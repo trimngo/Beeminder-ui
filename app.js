@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.14';
+const APP_VERSION = '1.0.15';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -301,13 +301,13 @@ els.sort.onchange = event => { state.sort = event.target.value; render(); };
 $('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; render(); };
 $('#copy-today-button').onclick = async event => {
   const button = event.currentTarget, originalText = button.textContent;
-  button.disabled = true; button.textContent = 'Refreshing…';
+  button.disabled = true; button.textContent = '…';
   try {
     await refreshGoals();
     const message = todayAccountabilityMessage();
     if (!message) { toast('No Beeminder entries today'); return; }
     await copyText(message);
-    button.textContent = 'Copied!'; toast('Today’s update copied');
+    button.textContent = '✓'; toast('Today’s update copied');
   } catch (error) {
     toast(error.message || 'Could not copy update');
   } finally {
