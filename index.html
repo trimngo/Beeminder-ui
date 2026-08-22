@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -53,6 +53,7 @@
               <option value="urgency">Most urgent</option>
               <option value="name">Name</option>
               <option value="recent">Recently updated</option>
+              <option value="below-target">Most below target</option>
             </select>
           </label>
         </div>
@@ -72,7 +73,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.15</span>
+        <span id="version-label">Version 1.0.16</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -131,11 +132,12 @@
       <div class="goal-content">
         <div class="goal-topline"><div class="goal-title-wrap"><h3 class="goal-slug"></h3><p class="description"></p></div><div class="goal-actions"><div class="today-status"></div><button class="edit-goal-button" type="button" aria-label="Edit goal description">✎</button></div></div>
         <p class="fineprint" hidden></p>
+        <p class="rate-comparison"></p>
         <div class="goal-footer"><div class="tags"></div><div class="safety-pill"></div></div>
       </div>
     </article>
   </template>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>

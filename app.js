@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.15';
+const APP_VERSION = '1.0.16';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -26,7 +26,7 @@ const els = {
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
 function normalizeGoal(goal) {
   // Migrate goals cached by older releases, where fine print was stored as `description`.
-  return { ...goal, title: cleanText(goal.title || goal.slug), fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
+  return { ...goal, title: cleanText(goal.title || goal.slug), fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), kyoom: goal.kyoom !== false, aggday: goal.aggday || 'sum', datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
 }
 function loadLocalGoals() {
   if (IS_LOCAL_TEST && TEST_PARAMS.get('sample') === '1') {
@@ -104,6 +104,30 @@ function ratePerDay(goal) {
   const days = unitDays[goal.runits] || 1, rate = Math.abs(Number(goal.rate));
   return Number.isFinite(rate) && rate > 0 ? rate / days : 0;
 }
+function targetRatePerDay(goal) {
+  const unitDays = { h: 1 / 24, d: 1, w: 7, m: 30.4375, y: 365.25 };
+  const rate = Number(goal.rate), days = unitDays[goal.runits] || 1;
+  return Number.isFinite(rate) ? rate / days : null;
+}
+function fourteenDayPerformance(goal) {
+  const target = targetRatePerDay(goal);
+  // A sum of datapoint values represents progress only for cumulative goals.
+  // Non-cumulative readings (for example weight) need road-aware deltas, so do
+  // not present a deceptively precise comparison for them.
+  if (!goal.kyoom || !Number.isFinite(target) || target === 0) return { actual: null, target, miss: null };
+  const today = todayDaystamp(state.timeZone), start = shiftDaystamp(today, -13);
+  const total = goal.datapoints.reduce((sum, point) => {
+    if (point.daystamp < start || point.daystamp > today) return sum;
+    const value = Number(point.value);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+  const actual = total / 14;
+  const miss = target > 0 ? (target - actual) / Math.abs(target) : (actual - target) / Math.abs(target);
+  return { actual, target, miss };
+}
+function formatDailyRate(value) {
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
+}
 function projectedDeadlineOffsets(goal, horizon) {
   const first = Math.max(0, Math.floor(Number(goal.safebuf) || 0)), offsets = [first];
   const dailyRate = ratePerDay(goal), quantum = Math.abs(Number(goal.quantum)) || 1;
@@ -133,7 +157,18 @@ function filteredGoals() {
   return state.goals
     .filter(goal => !state.hideDone || !goal.doneToday)
     .filter(matchesQuery)
-    .sort((a, b) => state.sort === 'name' ? a.slug.localeCompare(b.slug) : state.sort === 'recent' ? a.updated - b.updated : a.safebuf - b.safebuf);
+    .sort((a, b) => {
+      if (state.sort === 'name') return a.slug.localeCompare(b.slug);
+      if (state.sort === 'recent') return a.updated - b.updated;
+      if (state.sort === 'below-target') {
+        const aMiss = fourteenDayPerformance(a).miss, bMiss = fourteenDayPerformance(b).miss;
+        if (aMiss === null && bMiss === null) return a.slug.localeCompare(b.slug);
+        if (aMiss === null) return 1;
+        if (bMiss === null) return -1;
+        return bMiss - aMiss || a.slug.localeCompare(b.slug);
+      }
+      return a.safebuf - b.safebuf;
+    });
 }
 function addFilter(term) {
   const tokens = queryTokens(state.query);
@@ -149,6 +184,14 @@ function render() {
     node.querySelector('.description').textContent = goal.title;
     const fineprint = node.querySelector('.fineprint');
     fineprint.textContent = goal.fineprint; fineprint.hidden = !goal.fineprint;
+    const performance = fourteenDayPerformance(goal), rateComparison = node.querySelector('.rate-comparison');
+    if (performance.actual === null) {
+      rateComparison.textContent = performance.target === null || performance.target === 0 ? 'No comparable target' : '14d rate unavailable';
+      rateComparison.classList.add('unavailable');
+    } else {
+      rateComparison.textContent = `14d avg ${formatDailyRate(performance.actual)}/day · Target ${formatDailyRate(performance.target)}/day`;
+      rateComparison.classList.add(performance.miss > 0 ? 'behind' : 'meeting');
+    }
     node.querySelector('.safety-pill').textContent = safety.label;
     const status = node.querySelector('.today-status');
     status.textContent = goal.doneToday ? 'Done today' : 'No data today'; status.classList.toggle('complete', goal.doneToday);
@@ -264,7 +307,7 @@ async function refreshGoals({ announce = false } = {}) {
       state.goals = (data.goals || []).map(goal => normalizeGoal({
         slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '',
         safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99,
-        rate: goal.rate, runits: goal.runits, quantum: goal.quantum,
+        rate: goal.rate, runits: goal.runits, quantum: goal.quantum, kyoom: goal.kyoom, aggday: goal.aggday,
         datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone),
         updated: Date.now() / 60000 - (goal.updated_at || 0) / 60
       }));
