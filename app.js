@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.13';
+const APP_VERSION = '1.0.14';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -58,6 +58,30 @@ function todayDaystamp(timeZone) {
 function hasDataToday(datapoints, timeZone) {
   const today = todayDaystamp(timeZone);
   return Array.isArray(datapoints) && datapoints.some(point => point.daystamp === today);
+}
+function todayAccountabilityMessage() {
+  const today = todayDaystamp(state.timeZone);
+  const completed = state.goals.filter(goal =>
+    goal.datapoints.some(point => point.daystamp === today)
+  );
+  if (!completed.length) return '';
+
+  const items = completed.map((goal, index) => {
+    const messages = goal.datapoints
+      .filter(point => point.daystamp === today)
+      .map(point => point.comment?.trim() || '(No log message)');
+    const logs = messages.map(message => `   - ${message}`).join('\n');
+    return `${index + 1}. ${goal.slug} — ${goal.title}\n${logs}`;
+  });
+  return `What I’ve done today:\n\n${items.join('\n\n')}`;
+}
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+  const textarea = document.createElement('textarea');
+  textarea.value = text; textarea.setAttribute('readonly', ''); textarea.style.position = 'fixed'; textarea.style.opacity = '0';
+  document.body.append(textarea); textarea.select();
+  const copied = document.execCommand('copy'); textarea.remove();
+  if (!copied) throw new Error('Clipboard unavailable');
 }
 function createSampleGoals() {
   const today = todayDaystamp(state.timeZone);
@@ -275,6 +299,21 @@ els.clear.onclick = () => { state.query = ''; state.activeView = 'all'; render()
 els.doneFilter.onclick = () => { state.hideDone = !state.hideDone; state.activeView = 'custom'; render(); };
 els.sort.onchange = event => { state.sort = event.target.value; render(); };
 $('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; render(); };
+$('#copy-today-button').onclick = async event => {
+  const button = event.currentTarget, originalText = button.textContent;
+  button.disabled = true; button.textContent = 'Refreshing…';
+  try {
+    await refreshGoals();
+    const message = todayAccountabilityMessage();
+    if (!message) { toast('No Beeminder entries today'); return; }
+    await copyText(message);
+    button.textContent = 'Copied!'; toast('Today’s update copied');
+  } catch (error) {
+    toast(error.message || 'Could not copy update');
+  } finally {
+    setTimeout(() => { button.disabled = false; button.textContent = originalText; }, 1200);
+  }
+};
 $('#settings-button').onclick = () => { $('#username').value = localStorage.getItem('bee-user') || ''; $('#auth-token').value = localStorage.getItem('bee-token') || ''; els.settingsDialog.showModal(); };
 $('#timeline-settings').onclick = $('#settings-button').onclick;
 $('#list-tab').onclick = () => setMode('list');

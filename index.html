@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -63,6 +63,7 @@
           <h2 id="commitments-heading">Commitments</h2>
           <div class="list-actions"><span id="updated-label">Not connected</span><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
         </div>
+        <button class="copy-today-button" id="copy-today-button" type="button">Copy today’s update</button>
         <div id="goal-list" class="goal-list"></div>
         <div id="empty-state" class="empty-state" hidden>
           <div id="empty-icon">✓</div><h3 id="empty-title">All clear</h3><p id="empty-copy">No commitments match this view.</p>
@@ -72,7 +73,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.13</span>
+        <span id="version-label">Version 1.0.14</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -136,6 +137,6 @@
     </article>
   </template>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
