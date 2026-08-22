@@ -22,6 +22,8 @@ Authentication is shared by the entire app. When signed out, both tabs stay avai
 
 Goal cards render Beeminder’s `title` as the description and `fineprint` separately, preserving fine-print line breaks. Connected users can edit and save `title` through Beeminder’s documented goal-update endpoint. The API reference does not list `fineprint` as an update parameter, so the app intentionally presents it as read-only rather than risking a misleading local-only edit.
 
+Connected data refreshes automatically on launch, whenever the app returns to the foreground, after a restored page or network reconnection, and every five minutes while the app is visible. API requests bypass browser caches; when a refresh cannot complete, the status explicitly says that saved data is being shown instead of silently presenting it as current.
+
 JavaScript and CSS URLs are versioned together with the service-worker cache. This prevents an installed copy from combining new HTML with an older, incompatible script after a deployment.
 
 The footer displays the running version and checks `version.json` without using the browser cache. It reports whether the app is current, offline, or ready to reload into a newer deployment.

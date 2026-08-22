@@ -6,7 +6,8 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.12';
+const APP_VERSION = '1.0.13';
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
@@ -211,6 +212,53 @@ async function saveGoalTitle() {
   if (!response.ok) throw new Error(`Beeminder could not save this description (${response.status})`);
   const updated = await response.json(); goal.title = cleanText(updated.title || title); goal.fineprint = cleanText(updated.fineprint ?? goal.fineprint); persistGoals(); render();
 }
+let refreshPromise = null;
+async function refreshGoals({ announce = false } = {}) {
+  if (state.usingSample) return;
+  const user = localStorage.getItem('bee-user'), token = localStorage.getItem('bee-token');
+  if (!user || !token) return;
+  if (refreshPromise) return refreshPromise;
+
+  const label = $('#updated-label');
+  label.textContent = 'Refreshing…';
+  refreshPromise = (async () => {
+    try {
+      const params = new URLSearchParams({
+        auth_token: token,
+        associations: 'true',
+        emaciated: 'true',
+        datapoints_count: '100',
+        _: String(Date.now())
+      });
+      const url = `https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}.json?${params}`;
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) throw new Error(response.status === 401 ? 'Sign in again to refresh' : `Refresh failed (${response.status})`);
+      const data = await response.json();
+      const timeZone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      state.timeZone = timeZone;
+      localStorage.setItem('bee-timezone', timeZone);
+      state.goals = (data.goals || []).map(goal => normalizeGoal({
+        slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '',
+        safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99,
+        rate: goal.rate, runits: goal.runits, quantum: goal.quantum,
+        datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone),
+        updated: Date.now() / 60000 - (goal.updated_at || 0) / 60
+      }));
+      persistGoals();
+      localStorage.setItem('bee-last-refresh', String(Date.now()));
+      label.textContent = 'Updated just now';
+      render();
+      if (announce) toast('Goals refreshed');
+    } catch (error) {
+      label.textContent = navigator.onLine ? 'Could not refresh · tap gear' : 'Offline · showing saved data';
+      if (announce) toast(error.message);
+      throw error;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
 async function checkForUpdates() {
   const button = $('#update-button'), label = $('#update-label'); button.classList.remove('available', 'offline'); label.textContent = 'Checking for updates…';
   try {
@@ -244,13 +292,9 @@ $('#settings-form').onsubmit = async event => {
   if (!user || !token) { toast('Enter username and token'); return; }
   localStorage.setItem('bee-user', user); localStorage.setItem('bee-token', token); $('#connect-button').textContent = 'Connecting…';
   try {
-    const url = `https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}.json?auth_token=${encodeURIComponent(token)}&associations=true&emaciated=true&datapoints_count=100`;
-    const response = await fetch(url); if (!response.ok) throw new Error('Could not connect'); const data = await response.json();
-    const timeZone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    state.timeZone = timeZone; localStorage.setItem('bee-timezone', timeZone);
     state.usingSample = false;
-    state.goals = data.goals.map(goal => normalizeGoal({ slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '', safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99, rate: goal.rate, runits: goal.runits, quantum: goal.quantum, datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone), updated: Date.now() / 60000 - (goal.updated_at || 0) / 60 }));
-    persistGoals(); $('#updated-label').textContent = 'Updated just now'; els.settingsDialog.close(); render(); toast('Goals refreshed');
+    await refreshGoals({ announce: true });
+    els.settingsDialog.close();
   } catch (error) { toast(error.message); } finally { $('#connect-button').textContent = 'Connect & refresh'; }
 };
 $('#disconnect-button').onclick = () => { localStorage.removeItem('bee-user'); localStorage.removeItem('bee-token'); localStorage.removeItem('bee-goals'); state.goals = []; state.usingSample = false; $('#updated-label').textContent = 'Not connected'; els.settingsDialog.close(); render(); toast('Signed out on this device'); };
@@ -260,6 +304,17 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 $('#version-label').textContent = `Version ${APP_VERSION}`; $('#update-button').onclick = checkForUpdates; window.addEventListener('load', checkForUpdates); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdates(); });
 loadLocalGoals();
 setMode(state.mode);
+// Refresh on every launch, return from the iOS background, restored page, and
+// network reconnection. The interval also prevents a long-open app going stale.
+refreshGoals().catch(() => {});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshGoals().catch(() => {});
+});
+window.addEventListener('pageshow', () => refreshGoals().catch(() => {}));
+window.addEventListener('online', () => refreshGoals().catch(() => {}));
+setInterval(() => {
+  if (document.visibilityState === 'visible') refreshGoals().catch(() => {});
+}, AUTO_REFRESH_INTERVAL_MS);
 if (IS_LOCAL_TEST && TEST_PARAMS.get('tooltip') === '1') {
   const goal = state.goals.find(item => item.datapoints.length);
   if (goal) showDatapointTooltip(goal, goal.datapoints[0].daystamp, goal.datapoints.filter(point => point.daystamp === goal.datapoints[0].daystamp));
