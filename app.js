@@ -1,12 +1,12 @@
 const sampleGoals = [
   { slug: 'morning-pages', title: 'Morning pages', fineprint: 'Write 3 pages\n#morning #writing', safebuf: 0, rate: 5, runits: 'w', quantum: 1, doneToday: false, updated: 6 },
-  { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, rate: 1, runits: 'd', quantum: 1, doneToday: false, updated: 42 },
+  { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, rate: 5, runits: 'w', quantum: 1, actionValue: 1, doneToday: false, updated: 42 },
   { slug: 'german', title: 'Practice German', fineprint: '20 sentences from a book\n#learning #deep', safebuf: 1, rate: 3, runits: 'w', quantum: 1, doneToday: true, updated: 20 },
   { slug: 'strength', title: 'Strength training', fineprint: 'Complete today’s workout\n#health #gym', safebuf: 2, rate: 3, runits: 'w', quantum: 1, doneToday: false, updated: 180 },
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.16';
+const APP_VERSION = '1.0.17';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -85,7 +85,7 @@ async function copyText(text) {
 }
 function createSampleGoals() {
   const today = todayDaystamp(state.timeZone);
-  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goalIndex + 1, comment: goalIndex === 1 && index === 6 ? 'DERAIL' : index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
+  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goal.actionValue || goalIndex + 1, comment: goalIndex === 1 && index === 6 ? 'DERAIL' : index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
 }
 function shiftDaystamp(daystamp, days) {
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
@@ -129,12 +129,7 @@ function formatDailyRate(value) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
 }
 function projectedDeadlineOffsets(goal, horizon) {
-  const first = Math.max(0, Math.floor(Number(goal.safebuf) || 0)), offsets = [first];
-  const dailyRate = ratePerDay(goal), quantum = Math.abs(Number(goal.quantum)) || 1;
-  if (!dailyRate) return new Set(offsets);
-  const cadence = Math.max(1, Math.floor(quantum / dailyRate));
-  for (let offset = first + cadence; offset <= horizon; offset += cadence) offsets.push(offset);
-  return new Set(offsets);
+  return BeeProjection.projectedDeadlineOffsets(goal, horizon, todayDaystamp(state.timeZone));
 }
 function urgency(goal) {
   if (goal.safebuf <= 0) return { color: '#ef5b4c', label: 'Due today' };

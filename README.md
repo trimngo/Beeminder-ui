@@ -16,7 +16,7 @@ The Timeline tab shows every commitment as a compact column and days as vertical
 
 The look-ahead control expands future rows to 7, 14, 30, or 60 days and remembers the selection. Historical green squares are buttons: tapping one opens the entry value and its Beeminder note, including multiple entries on the same day.
 
-Future markers repeat through the whole selected range. The projection starts at the current safety buffer, then assumes one `quantum` of data is entered on each deadline and derives the conservative repeat cadence from the goal’s `rate` and `runits`. Derail datapoints are rendered as red × buttons and retain their value/note details.
+Future markers repeat through the whole selected range. The projection starts at the current safety buffer, estimates a typical action from the median positive datapoint value in the last 30 days, and distributes those actions according to the goal’s fractional target rate without rounding every interval down. If there is no recent history, `quantum` is used only as a fallback. Flat-road and negative-rate goals show only their current safety deadline because recurring do-less projections require a different model. These dates remain estimates: road changes, ratchets, weekends, and unusual entry values can change the real deadlines. Derail datapoints are rendered as red × buttons and retain their value/note details.
 
 Authentication is shared by the entire app. When signed out, both tabs stay available but neither mode renders commitments; a single universal sign-in panel opens the connection dialog. Local sample fixtures are always marked with a prominent test-data banner.
 
