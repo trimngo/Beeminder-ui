@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fffaf1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Bee Today" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="styles.css?v=20" />
+  <title>Bee Today</title>
+</head>
+<body>
+  <div class="app-shell">
+    <main>
+      <nav class="mode-tabs" aria-label="View mode">
+        <button class="mode-tab active" id="list-tab" type="button" aria-selected="true">List</button>
+        <button class="mode-tab" id="timeline-tab" type="button" aria-selected="false">Timeline</button>
+      </nav>
+
+      <div class="test-data-banner" id="test-data-banner" hidden>LOCAL TEST DATA · NOT BEEMINDER</div>
+      <section class="auth-gate" id="auth-gate" hidden aria-labelledby="auth-gate-title">
+        <div class="auth-gate-icon">→</div>
+        <h1 id="auth-gate-title">Sign in to Beeminder</h1>
+        <p>Connect once to use your commitments in both List and Timeline modes.</p>
+        <button class="primary-button" id="auth-gate-button" type="button">Sign in to Beeminder</button>
+        <p class="privacy-note">Your username and personal token stay on this device.</p>
+      </section>
+
+      <div id="list-view">
+      <section class="views-section" aria-labelledby="views-heading">
+        <div class="section-heading">
+          <h2 id="views-heading">Saved views</h2>
+          <button class="text-button" id="save-view-button">+ Save current</button>
+        </div>
+        <div class="view-chips" id="view-chips"></div>
+      </section>
+
+      <section class="filters" aria-label="Filters">
+        <label class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="search-input" type="search" placeholder="Filter by tag or keyword" autocomplete="off" />
+          <button id="clear-search" aria-label="Clear search" hidden>×</button>
+        </label>
+        <p class="filter-help">Try <button type="button" data-filter="#deep">#deep</button>, <button type="button" data-filter="-#red">-#red</button>, or <button type="button" data-filter="-done:today">-done:today</button></p>
+        <div class="filter-row">
+          <button class="filter-button" id="done-filter" aria-pressed="true"><span class="toggle-dot"></span> Hide done today</button>
+          <label class="sort-control">Sort
+            <select id="sort-select" aria-label="Sort commitments">
+              <option value="urgency">Most urgent</option>
+              <option value="name">Name</option>
+              <option value="recent">Recently updated</option>
+              <option value="compliance-low">Lowest compliance</option>
+              <option value="compliance-high">Highest compliance</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="commitments" aria-labelledby="commitments-heading">
+        <div class="section-heading list-heading">
+          <h2 id="commitments-heading">Commitments</h2>
+          <div class="list-actions"><span id="updated-label">Not connected</span><button class="copy-today-button" id="copy-today-button" type="button" aria-label="Copy today’s accountability update">Copy</button><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
+        </div>
+        <div id="goal-list" class="goal-list"></div>
+        <div id="empty-state" class="empty-state" hidden>
+          <div id="empty-icon">✓</div><h3 id="empty-title">All clear</h3><p id="empty-copy">No commitments match this view.</p>
+          <button class="secondary-button" id="reset-filters">Reset filters</button>
+          <button class="primary-button empty-connect" id="empty-connect" hidden>Sign in to Beeminder</button>
+        </div>
+      </section>
+
+      <footer class="version-footer">
+        <span id="version-label">Version 1.0.20</span>
+        <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
+      </footer>
+      </div>
+
+      <section id="timeline-view" class="timeline-view" aria-labelledby="timeline-heading" hidden>
+        <div class="timeline-toolbar">
+          <div><h2 id="timeline-heading">Commitment history</h2><p>Past 14 days · <label>look ahead <select id="future-days" aria-label="Timeline look-ahead range"><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option><option value="60">60 days</option></select></label></p></div>
+          <button class="icon-button compact" id="timeline-settings" aria-label="Open settings">⚙</button>
+        </div>
+        <div class="timeline-legend"><span><i class="history-mark"></i>Data entered</span><span><i class="derail-mark">×</i>Derailment</span><span><i class="due-mark"></i>Estimated action date</span></div>
+        <div class="timeline-scroll" id="timeline-scroll"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="save-dialog">
+    <form method="dialog" id="save-view-form">
+      <div class="dialog-header"><div><p class="eyebrow">QUICK ACCESS</p><h2>Save this view</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p class="dialog-copy">Save the current keyword and done filter for one-tap access.</p>
+      <label class="field">View name<input id="view-name" required maxlength="24" placeholder="e.g. Deep work" /></label>
+      <button value="default" class="primary-button">Save view</button>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog">
+    <form method="dialog" id="settings-form">
+      <div class="dialog-header"><div><p class="eyebrow">CONNECTION</p><h2>Beeminder</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p class="dialog-copy">Connect directly to the Beeminder API. Your credentials stay only on this device.</p>
+      <label class="field">Username<input id="username" autocomplete="username" placeholder="yourname" /></label>
+      <label class="field">Personal auth token<input id="auth-token" type="password" autocomplete="off" placeholder="••••••••••••" /></label>
+      <p class="privacy-note">Find your token in Beeminder → Account settings. This static app has no server.</p>
+      <button value="default" class="primary-button" id="connect-button">Connect & refresh</button>
+      <button type="button" class="secondary-button full" id="disconnect-button">Sign out on this device</button>
+      <button type="button" class="secondary-button full" id="sample-button" hidden>Use sample data (local testing)</button>
+    </form>
+  </dialog>
+
+  <dialog id="edit-dialog">
+    <form method="dialog" id="edit-goal-form">
+      <div class="dialog-header"><div><p class="eyebrow">GOAL DETAILS</p><h2 id="edit-goal-slug"></h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <label class="field">Description<input id="edit-goal-title" required maxlength="255" /></label>
+      <label class="field">Fine print<textarea id="edit-goal-fineprint" readonly></textarea></label>
+      <p class="privacy-note">Beeminder’s documented API supports editing the description (title), but does not currently document fine-print updates. Fine print is shown exactly as Beeminder returns it and remains read-only here.</p>
+      <button value="default" class="primary-button" id="save-goal-button">Save description to Beeminder</button>
+    </form>
+  </dialog>
+
+  <div class="datapoint-tooltip" id="datapoint-tooltip" role="dialog" aria-modal="false" aria-labelledby="datapoint-tooltip-title" hidden>
+    <div class="datapoint-tooltip-head"><strong id="datapoint-tooltip-title">Data entered</strong><button type="button" id="datapoint-tooltip-close" aria-label="Close data details">×</button></div>
+    <div id="datapoint-tooltip-content"></div>
+  </div>
+
+  <template id="goal-template">
+    <article class="goal-card">
+      <div class="urgency-stripe"></div>
+      <div class="goal-content">
+        <div class="goal-topline"><div class="goal-title-wrap"><h3 class="goal-slug"></h3><p class="description"></p></div><div class="goal-actions"><div class="today-status"></div><button class="edit-goal-button" type="button" aria-label="Edit goal description">✎</button></div></div>
+        <p class="fineprint" hidden></p>
+        <div class="rate-comparison"><div class="rate-heading"><strong class="rate-label"></strong><span class="rate-values"></span></div><div class="rate-progress"><span></span></div></div>
+        <p class="derail-summary"></p>
+        <div class="goal-footer"><div class="tags"></div><div class="safety-pill"></div></div>
+      </div>
+    </article>
+  </template>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="projection.js?v=20"></script>
+  <script src="goal-stats.js?v=20"></script>
+  <script src="app.js?v=20"></script>
+</body>
+</html>

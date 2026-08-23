@@ -1,0 +1,1 @@
+{"name":"Bee Today — Beeminder Focus","short_name":"Bee Today","description":"See and filter the Beeminder commitments that matter today.","start_url":"./","scope":"./","display":"standalone","background_color":"#fffaf1","theme_color":"#fffaf1","icons":[{"src":"icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
