@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.22';
+const APP_VERSION = '1.0.23';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -20,7 +20,7 @@ const state = {
 const els = {
   list: $('#goal-list'), empty: $('#empty-state'), search: $('#search-input'), clear: $('#clear-search'),
   doneFilter: $('#done-filter'), sort: $('#sort-select'), chips: $('#view-chips'), saveDialog: $('#save-dialog'),
-  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), toast: $('#toast')
+  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), accountabilityDialog: $('#accountability-dialog'), toast: $('#toast')
 };
 
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
@@ -384,21 +384,30 @@ els.clear.onclick = () => { state.query = ''; state.activeView = 'all'; render()
 els.doneFilter.onclick = () => { state.hideDone = !state.hideDone; state.activeView = 'custom'; render(); };
 els.sort.onchange = event => { state.sort = event.target.value; render(); };
 $('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; render(); };
-$('#copy-today-button').onclick = async event => {
-  const button = event.currentTarget, originalText = button.textContent;
-  button.disabled = true; button.textContent = '…';
+async function copyAccountabilityExport(button, messageFactory, emptyMessage) {
+  const originalText = button.querySelector('strong').textContent;
+  button.disabled = true; button.querySelector('strong').textContent = 'Preparing…';
   try {
     await refreshGoals();
-    const message = todayAccountabilityMessage();
-    if (!message) { toast('No Beeminder entries today'); return; }
+    const message = messageFactory();
+    if (!message) { toast(emptyMessage); return; }
     await copyText(message);
-    button.textContent = '✓'; toast('Today’s update copied');
+    els.accountabilityDialog.close();
+    toast('Accountability update copied');
   } catch (error) {
     toast(error.message || 'Could not copy update');
   } finally {
-    setTimeout(() => { button.disabled = false; button.textContent = originalText; }, 1200);
+    button.disabled = false; button.querySelector('strong').textContent = originalText;
   }
-};
+}
+$('#accountability-button').onclick = () => els.accountabilityDialog.showModal();
+$('#accountability-dialog-close').onclick = () => els.accountabilityDialog.close();
+$('#copy-today-option').onclick = event => copyAccountabilityExport(
+  event.currentTarget, todayAccountabilityMessage, 'No Beeminder entries today'
+);
+$('#copy-commitments-option').onclick = event => copyAccountabilityExport(
+  event.currentTarget, () => BeeAccountability.commitmentsMessage(state.goals), 'No commitments to copy'
+);
 $('#settings-button').onclick = () => { $('#username').value = localStorage.getItem('bee-user') || ''; $('#auth-token').value = localStorage.getItem('bee-token') || ''; els.settingsDialog.showModal(); };
 $('#timeline-settings').onclick = $('#settings-button').onclick;
 $('#list-tab').onclick = () => setMode('list');

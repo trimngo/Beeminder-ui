@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=22" />
+  <link rel="stylesheet" href="styles.css?v=23" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -63,7 +63,7 @@
       <section class="commitments" aria-labelledby="commitments-heading">
         <div class="section-heading list-heading">
           <h2 id="commitments-heading">Commitments</h2>
-          <div class="list-actions"><span id="updated-label">Not connected</span><button class="copy-today-button" id="copy-today-button" type="button" aria-label="Copy today’s accountability update">Copy</button><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
+          <div class="list-actions"><span id="updated-label">Not connected</span><button class="accountability-button" id="accountability-button" type="button" aria-label="Open accountability exports">Export</button><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
         </div>
         <div id="goal-list" class="goal-list"></div>
         <div id="empty-state" class="empty-state" hidden>
@@ -74,7 +74,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.20</span>
+        <span id="version-label">Version 1.0.23</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -133,6 +133,17 @@
     </form>
   </dialog>
 
+  <dialog id="accountability-dialog">
+    <div class="export-dialog-content">
+      <div class="dialog-header"><div><p class="eyebrow">ACCOUNTABILITY</p><h2>Copy an update</h2></div><button type="button" class="close-button" id="accountability-dialog-close" aria-label="Close accountability exports">×</button></div>
+      <p class="dialog-copy">Choose what you want to send to your accountability buddy.</p>
+      <div class="export-options">
+        <button type="button" class="export-option" id="copy-today-option"><strong>Today’s progress</strong><span>Completed commitments and today’s log messages</span></button>
+        <button type="button" class="export-option" id="copy-commitments-option"><strong>All commitments</strong><span>Numbered list with descriptions and target rates</span></button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="datapoint-tooltip" id="datapoint-tooltip" role="dialog" aria-modal="false" aria-labelledby="datapoint-tooltip-title" hidden>
     <div class="datapoint-tooltip-head"><strong id="datapoint-tooltip-title">Data entered</strong><button type="button" id="datapoint-tooltip-close" aria-label="Close data details">×</button></div>
     <div id="datapoint-tooltip-content"></div>
@@ -153,6 +164,7 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="projection.js?v=20"></script>
   <script src="goal-stats.js?v=20"></script>
-  <script src="app.js?v=22"></script>
+  <script src="accountability.js?v=23"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>
