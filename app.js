@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.17';
+const APP_VERSION = '1.0.18';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -123,7 +123,7 @@ function fourteenDayPerformance(goal) {
   }, 0);
   const actual = total / 14;
   const miss = target > 0 ? (target - actual) / Math.abs(target) : (actual - target) / Math.abs(target);
-  return { actual, target, miss };
+  return { actual, target, miss, compliance: actual / target };
 }
 function formatDailyRate(value) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
@@ -155,12 +155,13 @@ function filteredGoals() {
     .sort((a, b) => {
       if (state.sort === 'name') return a.slug.localeCompare(b.slug);
       if (state.sort === 'recent') return a.updated - b.updated;
-      if (state.sort === 'below-target') {
-        const aMiss = fourteenDayPerformance(a).miss, bMiss = fourteenDayPerformance(b).miss;
-        if (aMiss === null && bMiss === null) return a.slug.localeCompare(b.slug);
-        if (aMiss === null) return 1;
-        if (bMiss === null) return -1;
-        return bMiss - aMiss || a.slug.localeCompare(b.slug);
+      if (['compliance-low', 'compliance-high'].includes(state.sort)) {
+        const aCompliance = fourteenDayPerformance(a).compliance, bCompliance = fourteenDayPerformance(b).compliance;
+        if (!Number.isFinite(aCompliance) && !Number.isFinite(bCompliance)) return a.slug.localeCompare(b.slug);
+        if (!Number.isFinite(aCompliance)) return 1;
+        if (!Number.isFinite(bCompliance)) return -1;
+        const direction = state.sort === 'compliance-high' ? -1 : 1;
+        return direction * (aCompliance - bCompliance) || a.slug.localeCompare(b.slug);
       }
       return a.safebuf - b.safebuf;
     });
@@ -181,10 +182,20 @@ function render() {
     fineprint.textContent = goal.fineprint; fineprint.hidden = !goal.fineprint;
     const performance = fourteenDayPerformance(goal), rateComparison = node.querySelector('.rate-comparison');
     if (performance.actual === null) {
-      rateComparison.textContent = performance.target === null || performance.target === 0 ? 'No comparable target' : '14d rate unavailable';
+      rateComparison.querySelector('.rate-label').textContent = performance.target === null || performance.target === 0 ? 'No comparable target' : '14d rate unavailable';
       rateComparison.classList.add('unavailable');
     } else {
-      rateComparison.textContent = `14d avg ${formatDailyRate(performance.actual)}/day · Target ${formatDailyRate(performance.target)}/day`;
+      const percent = Math.round(performance.compliance * 100), progress = rateComparison.querySelector('.rate-progress');
+      const boundedPercent = Math.max(0, Math.min(100, percent));
+      rateComparison.querySelector('.rate-label').textContent = `${percent}% of target`;
+      rateComparison.querySelector('.rate-values').textContent = `${formatDailyRate(performance.actual)} / ${formatDailyRate(performance.target)} per day`;
+      progress.style.setProperty('--rate-progress', `${boundedPercent}%`);
+      progress.setAttribute('role', 'progressbar');
+      progress.setAttribute('aria-label', `${goal.slug} 14-day rate as a percentage of target`);
+      progress.setAttribute('aria-valuenow', String(boundedPercent));
+      progress.setAttribute('aria-valuemin', '0');
+      progress.setAttribute('aria-valuemax', '100');
+      progress.setAttribute('aria-valuetext', `${percent}% of target; actual ${formatDailyRate(performance.actual)} per day, target ${formatDailyRate(performance.target)} per day`);
       rateComparison.classList.add(performance.miss > 0 ? 'behind' : 'meeting');
     }
     node.querySelector('.safety-pill').textContent = safety.label;

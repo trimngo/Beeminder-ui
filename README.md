@@ -26,7 +26,7 @@ Connected data refreshes automatically on launch, whenever the app returns to th
 
 The compact **Copy** button in the Commitments heading refreshes Beeminder first, then copies a numbered accountability update containing each completed goal’s slug, description, and all log messages entered today. Entries without a comment are identified as having no log message. Keeping the action in the heading preserves vertical space for the goal list.
 
-Each cumulative goal shows its average recorded value per calendar day over the 14-day window ending today, including zero-entry days, next to its target normalized to a daily rate. **Most below target** sorts by proportional shortfall so differently scaled commitments can be compared fairly. Non-cumulative readings and zero or missing targets are labeled unavailable rather than showing a misleading calculation; negative targets use the inverse comparison direction.
+Each cumulative goal shows its average recorded value per calendar day over the 14-day window ending today, including zero-entry days, as a percentage-of-target progress bar. The exact actual and target daily rates remain beside the percentage. **Lowest compliance** and **Highest compliance** sort by that percentage so differently scaled commitments can be compared fairly. Non-cumulative readings and zero or missing targets are labeled unavailable rather than showing a misleading calculation; negative targets use the inverse comparison direction.
 
 JavaScript and CSS URLs are versioned together with the service-worker cache. This prevents an installed copy from combining new HTML with an older, incompatible script after a deployment.
 
