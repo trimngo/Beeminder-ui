@@ -3,25 +3,44 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.BeeAccountability = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-  const UNIT_NAMES = { h: 'hour', d: 'day', w: 'week', m: 'month', y: 'year' };
+  const WEEKS_PER_UNIT = { h: 1 / 168, d: 1 / 7, w: 1, m: 30.4375 / 7, y: 365.25 / 7 };
+
+  function formatNumber(value) {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
+  }
+
+  function withoutHashtags(text) {
+    return String(text || '').replace(/#[\w-]+/g, '').replace(/\s+/g, ' ').trim();
+  }
 
   function formatGoalRate(goal) {
     if (goal?.rate === null || goal?.rate === undefined || goal?.rate === '') return 'Rate unavailable';
     const rate = Number(goal?.rate);
     if (!Number.isFinite(rate)) return 'Rate unavailable';
-    const unit = UNIT_NAMES[goal.runits] || goal.runits || 'day';
-    const amount = new Intl.NumberFormat(undefined, { maximumFractionDigits: 10 }).format(rate);
-    const times = Math.abs(rate) === 1 ? 'time' : 'times';
-    return `${amount} ${times} per ${unit}`;
+    const weeksPerUnit = WEEKS_PER_UNIT[goal.runits];
+    if (!weeksPerUnit) return 'Rate unavailable';
+    const weeklyRate = rate / weeksPerUnit;
+    if (weeklyRate === 0 || Math.abs(weeklyRate) >= 1) {
+      const times = Math.abs(weeklyRate) === 1 ? 'time' : 'times';
+      return `${formatNumber(weeklyRate)} ${times} per week`;
+    }
+    if (Math.abs(weeklyRate) >= 0.5) {
+      const biweeklyRate = weeklyRate * 2;
+      const times = Math.abs(biweeklyRate) === 1 ? 'time' : 'times';
+      return `${formatNumber(biweeklyRate)} ${times} per 2 weeks`;
+    }
+    const weekInterval = 1 / Math.abs(weeklyRate);
+    return `${weeklyRate < 0 ? '-1' : '1'} time per ${formatNumber(weekInterval)} weeks`;
   }
 
   function commitmentsMessage(goals) {
     if (!Array.isArray(goals) || !goals.length) return '';
-    const items = goals.map((goal, index) =>
-      `${index + 1}. ${goal.slug} — ${goal.title || goal.slug}\n   Rate: ${formatGoalRate(goal)}`
-    );
+    const items = goals.map((goal, index) => {
+      const description = withoutHashtags(goal.title) || goal.slug;
+      return `${index + 1}. ${goal.slug} — ${description}\n   Rate: ${formatGoalRate(goal)}`;
+    });
     return `My commitments:\n\n${items.join('\n\n')}`;
   }
 
-  return { formatGoalRate, commitmentsMessage };
+  return { formatGoalRate, commitmentsMessage, withoutHashtags };
 }));
