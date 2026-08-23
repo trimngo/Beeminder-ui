@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.19';
+const APP_VERSION = '1.0.20';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -101,7 +101,7 @@ function isDerailDatapoint(point) {
 }
 function goalDerailStats(goal) {
   const derails = BeeGoalStats.countDerails(goal.datapoints);
-  return { derails, paid: BeeGoalStats.estimatedPaid(derails, goal.pledge) };
+  return { derails, paid: BeeGoalStats.totalPaid(derails) };
 }
 function ratePerDay(goal) {
   const unitDays = { h: 1 / 24, d: 1, w: 7, m: 30.4375, y: 365.25 };
@@ -203,10 +203,8 @@ function render() {
       rateComparison.classList.add(performance.miss > 0 ? 'behind' : 'meeting');
     }
     const derailStats = goalDerailStats(goal), derailSummary = node.querySelector('.derail-summary');
-    derailSummary.textContent = `${derailStats.derails} derail${derailStats.derails === 1 ? '' : 's'} · ${derailStats.paid === null ? 'Paid total unavailable' : `Est. $${formatDailyRate(derailStats.paid)} paid`}`;
-    derailSummary.title = derailStats.paid === null
-      ? 'Beeminder does not expose historical charges for this goal.'
-      : 'Estimated from the standard Beeminder pledge ladder; billing history is not exposed by the API.';
+    derailSummary.textContent = `${derailStats.derails} derail${derailStats.derails === 1 ? '' : 's'} · $${formatDailyRate(derailStats.paid)} paid`;
+    derailSummary.title = 'Total paid assumes every derail costs $5.';
     node.querySelector('.safety-pill').textContent = safety.label;
     const status = node.querySelector('.today-status');
     status.textContent = goal.doneToday ? 'Done today' : 'No data today'; status.classList.toggle('complete', goal.doneToday);
