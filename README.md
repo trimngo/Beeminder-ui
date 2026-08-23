@@ -28,6 +28,8 @@ The compact **Copy** button in the Commitments heading refreshes Beeminder first
 
 Each cumulative goal shows its average recorded value per calendar day over the 14-day window ending today, including zero-entry days, as a percentage-of-target progress bar. The exact actual and target daily rates remain beside the percentage. **Lowest compliance** and **Highest compliance** sort by that percentage so differently scaled commitments can be compared fairly. Non-cumulative readings and zero or missing targets are labeled unavailable rather than showing a misleading calculation; negative targets use the inverse comparison direction.
 
+Cards also count explicit `#DERAIL` datapoints across the goal's full history. Beeminder's API exposes the current pledge but not a per-goal billing history, so the paid amount is labeled as an estimate and is only calculated when the derail count and current pledge fit the standard Beeminder pledge ladder. Otherwise the card reports that the paid total is unavailable rather than presenting a misleading number.
+
 JavaScript and CSS URLs are versioned together with the service-worker cache. This prevents an installed copy from combining new HTML with an older, incompatible script after a deployment.
 
 The footer displays the running version and checks `version.json` without using the browser cache. It reports whether the app is current, offline, or ready to reload into a newer deployment.

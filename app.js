@@ -1,12 +1,12 @@
 const sampleGoals = [
-  { slug: 'morning-pages', title: 'Morning pages', fineprint: 'Write 3 pages\n#morning #writing', safebuf: 0, rate: 5, runits: 'w', quantum: 1, doneToday: false, updated: 6 },
-  { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, rate: 5, runits: 'w', quantum: 1, actionValue: 1, doneToday: false, updated: 42 },
-  { slug: 'german', title: 'Practice German', fineprint: '20 sentences from a book\n#learning #deep', safebuf: 1, rate: 3, runits: 'w', quantum: 1, doneToday: true, updated: 20 },
-  { slug: 'strength', title: 'Strength training', fineprint: 'Complete today’s workout\n#health #gym', safebuf: 2, rate: 3, runits: 'w', quantum: 1, doneToday: false, updated: 180 },
-  { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, doneToday: false, updated: 320 },
-  { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, doneToday: false, updated: 90 }
+  { slug: 'morning-pages', title: 'Morning pages', fineprint: 'Write 3 pages\n#morning #writing', safebuf: 0, rate: 5, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 6 },
+  { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, rate: 5, runits: 'w', quantum: 1, pledge: 5, actionValue: 1, doneToday: false, updated: 42 },
+  { slug: 'german', title: 'Practice German', fineprint: '20 sentences from a book\n#learning #deep', safebuf: 1, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: true, updated: 20 },
+  { slug: 'strength', title: 'Strength training', fineprint: 'Complete today’s workout\n#health #gym', safebuf: 2, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 180 },
+  { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
+  { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.18';
+const APP_VERSION = '1.0.19';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -85,7 +85,7 @@ async function copyText(text) {
 }
 function createSampleGoals() {
   const today = todayDaystamp(state.timeZone);
-  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goal.actionValue || goalIndex + 1, comment: goalIndex === 1 && index === 6 ? 'DERAIL' : index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
+  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goal.actionValue || goalIndex + 1, comment: goalIndex === 1 && index === 5 ? '#DERAIL' : index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
 }
 function shiftDaystamp(daystamp, days) {
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
@@ -98,6 +98,10 @@ function dayLabel(daystamp, offset) {
 }
 function isDerailDatapoint(point) {
   return Boolean(point.is_derail || point.derail || /\bderail(?:ed|ment)?\b/i.test(point.comment || ''));
+}
+function goalDerailStats(goal) {
+  const derails = BeeGoalStats.countDerails(goal.datapoints);
+  return { derails, paid: BeeGoalStats.estimatedPaid(derails, goal.pledge) };
 }
 function ratePerDay(goal) {
   const unitDays = { h: 1 / 24, d: 1, w: 7, m: 30.4375, y: 365.25 };
@@ -198,6 +202,11 @@ function render() {
       progress.setAttribute('aria-valuetext', `${percent}% of target; actual ${formatDailyRate(performance.actual)} per day, target ${formatDailyRate(performance.target)} per day`);
       rateComparison.classList.add(performance.miss > 0 ? 'behind' : 'meeting');
     }
+    const derailStats = goalDerailStats(goal), derailSummary = node.querySelector('.derail-summary');
+    derailSummary.textContent = `${derailStats.derails} derail${derailStats.derails === 1 ? '' : 's'} · ${derailStats.paid === null ? 'Paid total unavailable' : `Est. $${formatDailyRate(derailStats.paid)} paid`}`;
+    derailSummary.title = derailStats.paid === null
+      ? 'Beeminder does not expose historical charges for this goal.'
+      : 'Estimated from the standard Beeminder pledge ladder; billing history is not exposed by the API.';
     node.querySelector('.safety-pill').textContent = safety.label;
     const status = node.querySelector('.today-status');
     status.textContent = goal.doneToday ? 'Done today' : 'No data today'; status.classList.toggle('complete', goal.doneToday);
@@ -300,7 +309,7 @@ async function refreshGoals({ announce = false } = {}) {
         auth_token: token,
         associations: 'true',
         emaciated: 'true',
-        datapoints_count: '100',
+        // All datapoints are required to count derail markers since the goal began.
         _: String(Date.now())
       });
       const url = `https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}.json?${params}`;
@@ -313,7 +322,7 @@ async function refreshGoals({ announce = false } = {}) {
       state.goals = (data.goals || []).map(goal => normalizeGoal({
         slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '',
         safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99,
-        rate: goal.rate, runits: goal.runits, quantum: goal.quantum, kyoom: goal.kyoom, aggday: goal.aggday,
+        rate: goal.rate, runits: goal.runits, quantum: goal.quantum, kyoom: goal.kyoom, aggday: goal.aggday, pledge: goal.pledge,
         datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone),
         updated: Date.now() / 60000 - (goal.updated_at || 0) / 60
       }));
