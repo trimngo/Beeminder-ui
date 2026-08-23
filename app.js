@@ -6,13 +6,13 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.20';
+const APP_VERSION = '1.0.21';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
 const state = {
-  goals: [], query: '', hideDone: true, sort: 'urgency', activeView: 'all', editingSlug: null, usingSample: false,
+  goals: [], query: '', hideDone: true, sort: 'urgency', activeView: 'all', editingSlug: null, dataEntrySlug: null, usingSample: false,
   mode: IS_LOCAL_TEST && TEST_PARAMS.get('mode') === 'timeline' ? 'timeline' : localStorage.getItem('bee-mode') || 'list', timeZone: localStorage.getItem('bee-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
   futureDays: IS_LOCAL_TEST && TEST_PARAMS.get('future') ? Number(TEST_PARAMS.get('future')) : Number(localStorage.getItem('bee-future-days')) || 7,
   views: JSON.parse(localStorage.getItem('bee-views') || '[]')
@@ -20,7 +20,7 @@ const state = {
 const els = {
   list: $('#goal-list'), empty: $('#empty-state'), search: $('#search-input'), clear: $('#clear-search'),
   doneFilter: $('#done-filter'), sort: $('#sort-select'), chips: $('#view-chips'), saveDialog: $('#save-dialog'),
-  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), toast: $('#toast')
+  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), toast: $('#toast')
 };
 
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
@@ -209,6 +209,10 @@ function render() {
     const status = node.querySelector('.today-status');
     status.textContent = goal.doneToday ? 'Done today' : 'No data today'; status.classList.toggle('complete', goal.doneToday);
     node.querySelector('.edit-goal-button').onclick = () => openGoalEditor(goal.slug);
+    const addDataButton = node.querySelector('.add-data-button');
+    addDataButton.disabled = state.usingSample;
+    addDataButton.title = state.usingSample ? 'Data entry is unavailable for local test data' : '';
+    addDataButton.onclick = () => openDataEntry(goal.slug);
     const tagWrap = node.querySelector('.tags');
     tags(goal.fineprint).slice(0, 3).forEach(tag => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'tag'; button.textContent = tag;
@@ -291,6 +295,31 @@ async function saveGoalTitle() {
   const response = await fetch(`https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}/goals/${encodeURIComponent(goal.slug)}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body });
   if (!response.ok) throw new Error(`Beeminder could not save this description (${response.status})`);
   const updated = await response.json(); goal.title = cleanText(updated.title || title); goal.fineprint = cleanText(updated.fineprint ?? goal.fineprint); persistGoals(); render();
+}
+function openDataEntry(slug) {
+  if (state.usingSample) { toast('Connect to Beeminder to enter data'); return; }
+  state.dataEntrySlug = slug;
+  $('#data-goal-slug').textContent = slug;
+  $('#data-value').value = '';
+  $('#data-comment').value = '';
+  $('#data-error').hidden = true;
+  els.dataDialog.showModal();
+  $('#data-value').focus();
+}
+async function createDatapoint() {
+  const user = localStorage.getItem('bee-user'), token = localStorage.getItem('bee-token');
+  const valueText = $('#data-value').value.trim(), value = Number(valueText);
+  if (!user || !token) throw new Error('Connect to Beeminder before entering data');
+  if (!state.dataEntrySlug) throw new Error('Choose a commitment first');
+  if (!valueText || !Number.isFinite(value)) throw new Error('Enter a valid number');
+  const body = new URLSearchParams({ auth_token: token, value: valueText });
+  const comment = $('#data-comment').value.trim();
+  if (comment) body.set('comment', comment);
+  const response = await fetch(`https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}/goals/${encodeURIComponent(state.dataEntrySlug)}/datapoints.json`, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body
+  });
+  if (!response.ok) throw new Error(response.status === 401 ? 'Sign in again to enter data' : `Beeminder could not add this data (${response.status})`);
+  return response.json();
 }
 let refreshPromise = null;
 async function refreshGoals({ announce = false } = {}) {
@@ -382,6 +411,23 @@ $('#save-view-button').onclick = () => els.saveDialog.showModal();
 document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => addFilter(button.dataset.filter));
 $('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };
 $('#edit-goal-form').onsubmit = async event => { if (event.submitter.value === 'cancel') return; event.preventDefault(); const button = $('#save-goal-button'); button.disabled = true; button.textContent = 'Saving…'; try { await saveGoalTitle(); els.editDialog.close(); toast('Description saved to Beeminder'); } catch (error) { toast(error.message); } finally { button.disabled = false; button.textContent = 'Save description to Beeminder'; } };
+$('#data-entry-form').onsubmit = async event => {
+  if (event.submitter?.value === 'cancel') return;
+  event.preventDefault();
+  const button = $('#save-data-button'), error = $('#data-error');
+  button.disabled = true; button.textContent = 'Adding…'; error.hidden = true;
+  try {
+    await createDatapoint();
+    els.dataDialog.close();
+    toast('Data added to Beeminder');
+  } catch (caught) {
+    error.textContent = caught.message || 'Could not add data'; error.hidden = false;
+    return;
+  } finally {
+    button.disabled = false; button.textContent = 'Add data to Beeminder';
+  }
+  refreshGoals().catch(() => toast('Data added · refresh failed'));
+};
 $('#settings-form').onsubmit = async event => {
   if (event.submitter.value === 'cancel') return; event.preventDefault(); const user = $('#username').value.trim(), token = $('#auth-token').value.trim();
   if (!user || !token) { toast('Enter username and token'); return; }

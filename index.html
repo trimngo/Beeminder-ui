@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="styles.css?v=21" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -122,6 +122,17 @@
     </form>
   </dialog>
 
+  <dialog id="data-dialog">
+    <form method="dialog" id="data-entry-form">
+      <div class="dialog-header"><div><p class="eyebrow">NEW DATAPOINT</p><h2 id="data-goal-slug"></h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <p class="dialog-copy">Record progress directly in Beeminder.</p>
+      <label class="field">Value<input id="data-value" type="number" inputmode="decimal" step="any" required placeholder="0" /></label>
+      <label class="field">Comment (optional)<textarea id="data-comment" maxlength="1000" placeholder="What did you do?"></textarea></label>
+      <p class="form-error" id="data-error" role="alert" hidden></p>
+      <button value="default" class="primary-button" id="save-data-button">Add data to Beeminder</button>
+    </form>
+  </dialog>
+
   <div class="datapoint-tooltip" id="datapoint-tooltip" role="dialog" aria-modal="false" aria-labelledby="datapoint-tooltip-title" hidden>
     <div class="datapoint-tooltip-head"><strong id="datapoint-tooltip-title">Data entered</strong><button type="button" id="datapoint-tooltip-close" aria-label="Close data details">×</button></div>
     <div id="datapoint-tooltip-content"></div>
@@ -131,7 +142,7 @@
     <article class="goal-card">
       <div class="urgency-stripe"></div>
       <div class="goal-content">
-        <div class="goal-topline"><div class="goal-title-wrap"><h3 class="goal-slug"></h3><p class="description"></p></div><div class="goal-actions"><div class="today-status"></div><button class="edit-goal-button" type="button" aria-label="Edit goal description">✎</button></div></div>
+        <div class="goal-topline"><div class="goal-title-wrap"><h3 class="goal-slug"></h3><p class="description"></p></div><div class="goal-actions"><div class="today-status"></div><button class="add-data-button" type="button">+ Data</button><button class="edit-goal-button" type="button" aria-label="Edit goal description">✎</button></div></div>
         <p class="fineprint" hidden></p>
         <div class="rate-comparison"><div class="rate-heading"><strong class="rate-label"></strong><span class="rate-values"></span></div><div class="rate-progress"><span></span></div></div>
         <p class="derail-summary"></p>
@@ -142,6 +153,6 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="projection.js?v=20"></script>
   <script src="goal-stats.js?v=20"></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>
