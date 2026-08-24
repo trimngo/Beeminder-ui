@@ -3,6 +3,8 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.BeeGoalMetadata = api;
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+
   function normalizeTags(value) {
     if (!Array.isArray(value)) return [];
     return [...new Set(value.map(tag => String(tag).replace(/^#/, '').trim()).filter(Boolean))];
@@ -35,12 +37,18 @@
     if (end < 0) return { rawTitle: raw, title: raw, minutes: null, tags: [], hasMetadata: false };
     try {
       const metadata = JSON.parse(raw.slice(0, end + 1));
-      if (!metadata || Array.isArray(metadata) || typeof metadata !== 'object' || !('minutes' in metadata) || !('tags' in metadata)) throw new Error('Not goal metadata');
-      const minutes = metadata.minutes === null || metadata.minutes === '' ? null : Number(metadata.minutes);
+      if (!metadata || Array.isArray(metadata) || typeof metadata !== 'object') throw new Error('Not goal metadata');
+      const hasMinutes = hasOwn(metadata, 'm') || hasOwn(metadata, 'minutes');
+      const hasTags = hasOwn(metadata, 't') || hasOwn(metadata, 'tags');
+      if (!hasMinutes && !hasTags) throw new Error('Not goal metadata');
+      const rawMinutes = hasOwn(metadata, 'm') ? metadata.m : metadata.minutes;
+      const rawTags = hasOwn(metadata, 't') ? metadata.t : metadata.tags;
+      const minutes = rawMinutes === null || rawMinutes === '' || rawMinutes === undefined ? null : Number(rawMinutes);
       if (minutes !== null && (!Number.isFinite(minutes) || minutes <= 0)) throw new Error('Invalid minutes');
+      if (hasTags && !Array.isArray(rawTags)) throw new Error('Invalid tags');
       const title = raw.slice(end + 1).trim();
       if (!title) throw new Error('Missing description');
-      return { rawTitle: raw, title, minutes, tags: normalizeTags(metadata.tags), hasMetadata: true };
+      return { rawTitle: raw, title, minutes, tags: normalizeTags(rawTags), hasMetadata: true };
     } catch {
       return { rawTitle: raw, title: raw, minutes: null, tags: [], hasMetadata: false };
     }
@@ -51,7 +59,10 @@
     if (!description) throw new Error('Enter a description');
     const numericMinutes = minutes === null || minutes === undefined || minutes === '' ? null : Number(minutes);
     if (numericMinutes !== null && (!Number.isFinite(numericMinutes) || numericMinutes <= 0)) throw new Error('Minutes per unit must be greater than zero');
-    return `${JSON.stringify({ minutes: numericMinutes, tags: normalizeTags(tags) })} ${description}`;
+    const normalizedTags = normalizeTags(tags), metadata = {};
+    if (numericMinutes !== null) metadata.m = numericMinutes;
+    if (normalizedTags.length) metadata.t = normalizedTags;
+    return Object.keys(metadata).length ? `${JSON.stringify(metadata)} ${description}` : description;
   }
 
   return { parse, serialize, normalizeTags, legacyTitleParts };
