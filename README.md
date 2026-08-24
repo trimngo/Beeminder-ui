@@ -4,7 +4,7 @@ A mobile-first, installable Beeminder focus dashboard for GitHub Pages. It suppo
 
 The app icon is an SVG rather than a binary PNG, so the entire project can be reviewed and submitted through text-only patch systems.
 
-Filters support multiple required terms and exclusions. For example, `#work -#red -done:today` shows work-tagged commitments while excluding red-tagged commitments and anything completed today. Tap a visible hashtag to add it to the current filter, then save the view for later.
+Filters support multiple required terms and exclusions. Tag filters use exact, case-insensitive matches against either JSON metadata tags or unmigrated title hashtags. For example, `#work -#red -done:today` shows work-tagged commitments while excluding red-tagged commitments and anything completed today. Tap a visible hashtag to add it to the current filter, then save the view for later.
 
 Each commitment starts with its Beeminder slug and description. Its status reports whether the API returned a datapoint dated today. The **+ Data** action accepts a numeric value and optional comment and records the datapoint directly in Beeminder; credentials and entry data are sent from the browser to Beeminder and are not routed through another server.
 

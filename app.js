@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.29';
+const APP_VERSION = '1.0.30';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -143,16 +143,8 @@ function urgency(goal) {
   return { color: '#2eaa68', label: `Safe for ${goal.safebuf} days` };
 }
 function tags(text) { return [...text.matchAll(/#[\w-]+/g)].map(match => match[0]); }
-function queryTokens(query) { return query.match(/(?:[^\s"]+|"[^"]*")+/g)?.map(token => token.replace(/^"|"$/g, '').toLowerCase()) || []; }
-function matchesQuery(goal) {
-  const haystack = `${goal.slug} ${goal.title} ${goal.fineprint} ${goal.metadataTags.join(' ')}`.toLowerCase();
-  return queryTokens(state.query).every(token => {
-    const excluded = token.startsWith('-');
-    const term = excluded ? token.slice(1) : token;
-    const matched = term === 'done:today' || term === 'done' ? goal.doneToday : haystack.includes(term);
-    return excluded ? !matched : matched;
-  });
-}
+function queryTokens(query) { return BeeGoalSearch.queryTokens(query); }
+function matchesQuery(goal) { return BeeGoalSearch.matchesGoalQuery(goal, state.query); }
 function filteredGoals() {
   return state.goals
     .filter(goal => !state.hideDone || !goal.doneToday)
