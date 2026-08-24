@@ -8,6 +8,8 @@ Filters support multiple required terms and exclusions. For example, `#work -#re
 
 Each commitment starts with its Beeminder slug and description. Its status reports whether the API returned a datapoint dated today. The **+ Data** action accepts a numeric value and optional comment and records the datapoint directly in Beeminder; credentials and entry data are sent from the browser to Beeminder and are not routed through another server.
 
+The compact today-status pill on a commitment card is also its data-history control. Tapping it opens a scrollable, newest-first list of every loaded datapoint with its date, value, and comment, without adding another permanent control or taking space away from the card list.
+
 The app loads goals and recent datapoints through Beeminder’s user-associations response. A goal counts as done today when a returned datapoint’s `daystamp` matches today in the Beeminder account’s timezone, rather than the browser’s timezone.
 
 Production deployments never fall back to sample commitments: signed-out users see a Beeminder sign-in prompt. Sample data is available only when the app is served from `localhost` or `127.0.0.1` for local UI testing.

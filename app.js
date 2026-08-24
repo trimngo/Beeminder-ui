@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.24';
+const APP_VERSION = '1.0.25';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -20,7 +20,7 @@ const state = {
 const els = {
   list: $('#goal-list'), empty: $('#empty-state'), search: $('#search-input'), clear: $('#clear-search'),
   doneFilter: $('#done-filter'), sort: $('#sort-select'), chips: $('#view-chips'), saveDialog: $('#save-dialog'),
-  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), accountabilityDialog: $('#accountability-dialog'), toast: $('#toast')
+  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), accountabilityDialog: $('#accountability-dialog'), historyDialog: $('#goal-history-dialog'), toast: $('#toast')
 };
 
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
@@ -208,6 +208,8 @@ function render() {
     node.querySelector('.safety-pill').textContent = safety.label;
     const status = node.querySelector('.today-status');
     status.textContent = goal.doneToday ? 'Done today' : 'No data today'; status.classList.toggle('complete', goal.doneToday);
+    status.setAttribute('aria-label', `Show all data entries for ${goal.slug}`);
+    status.onclick = () => openGoalHistory(goal.slug);
     node.querySelector('.edit-goal-button').onclick = () => openGoalEditor(goal.slug);
     const addDataButton = node.querySelector('.add-data-button');
     addDataButton.disabled = state.usingSample;
@@ -306,6 +308,34 @@ function openDataEntry(slug) {
   els.dataDialog.showModal();
   $('#data-value').focus();
 }
+function historyDateLabel(daystamp) {
+  if (!/^\d{8}$/.test(daystamp || '')) return daystamp || 'Date unavailable';
+  const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))));
+  return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
+}
+function openGoalHistory(slug) {
+  const goal = state.goals.find(item => item.slug === slug);
+  if (!goal) return;
+  const entries = [...goal.datapoints].sort((a, b) =>
+    String(b.daystamp || '').localeCompare(String(a.daystamp || '')) || Number(b.timestamp || 0) - Number(a.timestamp || 0)
+  );
+  $('#goal-history-title').textContent = goal.slug;
+  $('#goal-history-summary').textContent = `${entries.length} data entr${entries.length === 1 ? 'y' : 'ies'}`;
+  const list = $('#goal-history-list'); list.innerHTML = '';
+  if (!entries.length) {
+    const empty = document.createElement('p'); empty.className = 'history-empty'; empty.textContent = 'No data entries yet.'; list.append(empty);
+  }
+  entries.forEach(point => {
+    const entry = document.createElement('article'); entry.className = `history-entry${isDerailDatapoint(point) ? ' derail' : ''}`;
+    const heading = document.createElement('div'); heading.className = 'history-entry-heading';
+    const date = document.createElement('strong'); date.textContent = historyDateLabel(point.daystamp);
+    const value = document.createElement('span'); value.textContent = `Value: ${point.value ?? '—'}`;
+    heading.append(date, value); entry.append(heading);
+    const comment = document.createElement('p'); comment.textContent = point.comment?.trim() || 'No comment'; comment.classList.toggle('empty-comment', !point.comment?.trim()); entry.append(comment);
+    list.append(entry);
+  });
+  els.historyDialog.showModal();
+}
 async function createDatapoint() {
   const user = localStorage.getItem('bee-user'), token = localStorage.getItem('bee-token');
   const valueText = $('#data-value').value.trim(), value = Number(valueText);
@@ -402,6 +432,7 @@ async function copyAccountabilityExport(button, messageFactory, emptyMessage) {
 }
 $('#accountability-button').onclick = () => els.accountabilityDialog.showModal();
 $('#accountability-dialog-close').onclick = () => els.accountabilityDialog.close();
+$('#goal-history-close').onclick = () => els.historyDialog.close();
 $('#copy-today-option').onclick = event => copyAccountabilityExport(
   event.currentTarget, todayAccountabilityMessage, 'No Beeminder entries today'
 );
