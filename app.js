@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.30';
+const APP_VERSION = '1.0.31';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -175,8 +175,6 @@ function render() {
     node.style.setProperty('--urgency', safety.color); node.classList.toggle('done', goal.doneToday);
     node.querySelector('.goal-slug').textContent = goal.slug;
     node.querySelector('.description').textContent = goal.title;
-    const fineprint = node.querySelector('.fineprint');
-    fineprint.textContent = goal.fineprint; fineprint.hidden = !goal.fineprint;
     const performance = fourteenDayPerformance(goal), rateComparison = node.querySelector('.rate-comparison');
     if (performance.actual === null) {
       rateComparison.querySelector('.rate-label').textContent = performance.target === null || performance.target === 0 ? 'No comparable target' : '14d rate unavailable';
@@ -199,6 +197,9 @@ function render() {
     derailSummary.textContent = `${derailStats.derails} derail${derailStats.derails === 1 ? '' : 's'} · $${formatDailyRate(derailStats.paid)} paid`;
     derailSummary.title = 'Total paid assumes every derail costs $5.';
     node.querySelector('.safety-pill').textContent = safety.label;
+    const timePill = node.querySelector('.time-pill');
+    timePill.textContent = goal.minutesPerUnit === null ? '' : `${formatDailyRate(goal.minutesPerUnit)} min/unit`;
+    timePill.hidden = goal.minutesPerUnit === null;
     const status = node.querySelector('.today-status');
     status.textContent = goal.doneToday ? 'Done today' : 'No data today'; status.classList.toggle('complete', goal.doneToday);
     status.setAttribute('aria-label', `Show all data entries for ${goal.slug}`);
