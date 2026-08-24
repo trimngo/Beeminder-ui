@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.25';
+const APP_VERSION = '1.0.26';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -26,7 +26,8 @@ const els = {
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
 function normalizeGoal(goal) {
   // Migrate goals cached by older releases, where fine print was stored as `description`.
-  return { ...goal, title: cleanText(goal.title || goal.slug), fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), kyoom: goal.kyoom !== false, aggday: goal.aggday || 'sum', datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
+  const parsed = BeeGoalMetadata.parse(cleanText(goal.rawTitle || goal.title || goal.slug));
+  return { ...goal, rawTitle: parsed.rawTitle, title: parsed.title, minutesPerUnit: parsed.minutes, metadataTags: parsed.tags, hasMetadata: parsed.hasMetadata, fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), kyoom: goal.kyoom !== false, aggday: goal.aggday || 'sum', datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
 }
 function loadLocalGoals() {
   if (IS_LOCAL_TEST && TEST_PARAMS.get('sample') === '1') {
@@ -144,7 +145,7 @@ function urgency(goal) {
 function tags(text) { return [...text.matchAll(/#[\w-]+/g)].map(match => match[0]); }
 function queryTokens(query) { return query.match(/(?:[^\s"]+|"[^"]*")+/g)?.map(token => token.replace(/^"|"$/g, '').toLowerCase()) || []; }
 function matchesQuery(goal) {
-  const haystack = `${goal.slug} ${goal.title} ${goal.fineprint}`.toLowerCase();
+  const haystack = `${goal.slug} ${goal.title} ${goal.fineprint} ${goal.metadataTags.join(' ')}`.toLowerCase();
   return queryTokens(state.query).every(token => {
     const excluded = token.startsWith('-');
     const term = excluded ? token.slice(1) : token;
@@ -216,7 +217,8 @@ function render() {
     addDataButton.title = state.usingSample ? 'Data entry is unavailable for local test data' : '';
     addDataButton.onclick = () => openDataEntry(goal.slug);
     const tagWrap = node.querySelector('.tags');
-    tags(goal.fineprint).slice(0, 3).forEach(tag => {
+    const visibleTags = goal.hasMetadata ? goal.metadataTags.map(tag => `#${tag}`) : tags(goal.fineprint);
+    visibleTags.slice(0, 3).forEach(tag => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'tag'; button.textContent = tag;
       button.setAttribute('aria-label', `Filter by ${tag}`); button.onclick = () => addFilter(tag); tagWrap.append(button);
     });
@@ -286,17 +288,20 @@ function removeView(id) { state.views = state.views.filter(view => view.id !== i
 function toast(message) { els.toast.textContent = message; els.toast.classList.add('show'); setTimeout(() => els.toast.classList.remove('show'), 1800); }
 function openGoalEditor(slug) {
   const goal = state.goals.find(item => item.slug === slug); if (!goal) return;
-  state.editingSlug = slug; $('#edit-goal-slug').textContent = slug; $('#edit-goal-title').value = goal.title; $('#edit-goal-fineprint').value = goal.fineprint;
+  const fallbackTags = tags(goal.fineprint).map(tag => tag.slice(1));
+  state.editingSlug = slug; $('#edit-goal-slug').textContent = slug; $('#edit-goal-title').value = goal.title; $('#edit-goal-minutes').value = goal.minutesPerUnit ?? ''; $('#edit-goal-tags').value = (goal.hasMetadata ? goal.metadataTags : fallbackTags).join(', '); $('#edit-goal-fineprint').value = goal.fineprint;
   els.editDialog.showModal();
 }
 async function saveGoalTitle() {
   const goal = state.goals.find(item => item.slug === state.editingSlug), user = localStorage.getItem('bee-user'), token = localStorage.getItem('bee-token');
   if (!goal || !user || !token) throw new Error('Connect to Beeminder before editing');
-  const title = $('#edit-goal-title').value.trim();
+  const tags = $('#edit-goal-tags').value.split(',');
+  const title = BeeGoalMetadata.serialize($('#edit-goal-title').value, $('#edit-goal-minutes').value, tags);
+  if (title.length > 255) throw new Error(`Description and metadata are ${title.length - 255} characters too long`);
   const body = new URLSearchParams({ auth_token: token, title });
   const response = await fetch(`https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}/goals/${encodeURIComponent(goal.slug)}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body });
   if (!response.ok) throw new Error(`Beeminder could not save this description (${response.status})`);
-  const updated = await response.json(); goal.title = cleanText(updated.title || title); goal.fineprint = cleanText(updated.fineprint ?? goal.fineprint); persistGoals(); render();
+  const updated = await response.json(), normalized = normalizeGoal({ ...goal, rawTitle: cleanText(updated.title || title), fineprint: updated.fineprint ?? goal.fineprint }); Object.assign(goal, normalized); persistGoals(); render();
 }
 function openDataEntry(slug) {
   if (state.usingSample) { toast('Connect to Beeminder to enter data'); return; }
@@ -433,6 +438,7 @@ async function copyAccountabilityExport(button, messageFactory, emptyMessage) {
 $('#accountability-button').onclick = () => els.accountabilityDialog.showModal();
 $('#accountability-dialog-close').onclick = () => els.accountabilityDialog.close();
 $('#goal-history-close').onclick = () => els.historyDialog.close();
+$('#edit-goal-close').onclick = () => els.editDialog.close();
 $('#copy-today-option').onclick = event => copyAccountabilityExport(
   event.currentTarget, todayAccountabilityMessage, 'No Beeminder entries today'
 );
@@ -451,7 +457,7 @@ $('#auth-gate-button').onclick = () => els.settingsDialog.showModal();
 $('#save-view-button').onclick = () => els.saveDialog.showModal();
 document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => addFilter(button.dataset.filter));
 $('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };
-$('#edit-goal-form').onsubmit = async event => { if (event.submitter.value === 'cancel') return; event.preventDefault(); const button = $('#save-goal-button'); button.disabled = true; button.textContent = 'Saving…'; try { await saveGoalTitle(); els.editDialog.close(); toast('Description saved to Beeminder'); } catch (error) { toast(error.message); } finally { button.disabled = false; button.textContent = 'Save description to Beeminder'; } };
+$('#edit-goal-form').onsubmit = async event => { event.preventDefault(); const button = $('#save-goal-button'); button.disabled = true; button.textContent = 'Saving…'; try { await saveGoalTitle(); els.editDialog.close(); toast('Commitment saved to Beeminder'); } catch (error) { toast(error.message); } finally { button.disabled = false; button.textContent = 'Save commitment to Beeminder'; } };
 $('#data-entry-form').onsubmit = async event => {
   if (event.submitter?.value === 'cancel') return;
   event.preventDefault();

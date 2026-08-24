@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=25" />
+  <link rel="stylesheet" href="styles.css?v=26" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -74,7 +74,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.25</span>
+        <span id="version-label">Version 1.0.26</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -114,11 +114,16 @@
 
   <dialog id="edit-dialog">
     <form method="dialog" id="edit-goal-form">
-      <div class="dialog-header"><div><p class="eyebrow">GOAL DETAILS</p><h2 id="edit-goal-slug"></h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <div class="dialog-header"><div><p class="eyebrow">GOAL DETAILS</p><h2 id="edit-goal-slug"></h2></div><button type="button" class="close-button" id="edit-goal-close" aria-label="Cancel commitment editing">×</button></div>
       <label class="field">Description<input id="edit-goal-title" required maxlength="255" /></label>
+      <div class="metadata-fields">
+        <label class="field">Minutes per unit<input id="edit-goal-minutes" type="number" inputmode="decimal" min="0.01" step="any" placeholder="Not set" /></label>
+        <label class="field">Tags<input id="edit-goal-tags" placeholder="health, deep" /></label>
+      </div>
+      <p class="privacy-note">Time and tags are stored in a compact JSON object at the beginning of the Beeminder description. Leave time blank if it is not known yet.</p>
       <label class="field">Fine print<textarea id="edit-goal-fineprint" readonly></textarea></label>
       <p class="privacy-note">Beeminder’s documented API supports editing the description (title), but does not currently document fine-print updates. Fine print is shown exactly as Beeminder returns it and remains read-only here.</p>
-      <button value="default" class="primary-button" id="save-goal-button">Save description to Beeminder</button>
+      <button value="default" class="primary-button" id="save-goal-button">Save commitment to Beeminder</button>
     </form>
   </dialog>
 
@@ -172,7 +177,8 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="projection.js?v=20"></script>
   <script src="goal-stats.js?v=20"></script>
+  <script src="goal-metadata.js?v=26"></script>
   <script src="accountability.js?v=25"></script>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>
