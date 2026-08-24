@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.26';
+const APP_VERSION = '1.0.27';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -217,7 +217,7 @@ function render() {
     addDataButton.title = state.usingSample ? 'Data entry is unavailable for local test data' : '';
     addDataButton.onclick = () => openDataEntry(goal.slug);
     const tagWrap = node.querySelector('.tags');
-    const visibleTags = goal.hasMetadata ? goal.metadataTags.map(tag => `#${tag}`) : tags(goal.fineprint);
+    const visibleTags = goal.hasMetadata ? goal.metadataTags.map(tag => `#${tag}`) : tags(goal.title);
     visibleTags.slice(0, 3).forEach(tag => {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'tag'; button.textContent = tag;
       button.setAttribute('aria-label', `Filter by ${tag}`); button.onclick = () => addFilter(tag); tagWrap.append(button);
@@ -288,8 +288,8 @@ function removeView(id) { state.views = state.views.filter(view => view.id !== i
 function toast(message) { els.toast.textContent = message; els.toast.classList.add('show'); setTimeout(() => els.toast.classList.remove('show'), 1800); }
 function openGoalEditor(slug) {
   const goal = state.goals.find(item => item.slug === slug); if (!goal) return;
-  const fallbackTags = tags(goal.fineprint).map(tag => tag.slice(1));
-  state.editingSlug = slug; $('#edit-goal-slug').textContent = slug; $('#edit-goal-title').value = goal.title; $('#edit-goal-minutes').value = goal.minutesPerUnit ?? ''; $('#edit-goal-tags').value = (goal.hasMetadata ? goal.metadataTags : fallbackTags).join(', '); $('#edit-goal-fineprint').value = goal.fineprint;
+  const legacy = BeeGoalMetadata.legacyTitleParts(goal.title);
+  state.editingSlug = slug; $('#edit-goal-slug').textContent = slug; $('#edit-goal-title').value = goal.hasMetadata ? goal.title : legacy.title; $('#edit-goal-minutes').value = goal.minutesPerUnit ?? ''; $('#edit-goal-tags').value = (goal.hasMetadata ? goal.metadataTags : legacy.tags).join(', '); $('#edit-goal-fineprint').value = goal.fineprint;
   els.editDialog.showModal();
 }
 async function saveGoalTitle() {

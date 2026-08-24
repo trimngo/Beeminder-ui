@@ -24,7 +24,7 @@ Authentication is shared by the entire app. When signed out, both tabs stay avai
 
 Goal cards render Beeminder’s `title` as the description and `fineprint` separately, preserving fine-print line breaks. Connected users can edit and save `title` through Beeminder’s documented goal-update endpoint. The API reference does not list `fineprint` as an update parameter, so the app intentionally presents it as read-only rather than risking a misleading local-only edit.
 
-The goal editor also stores optional minutes-per-unit and editable tags in a compact JSON object at the beginning of the Beeminder title, for example `{"minutes":30,"tags":["health"]} Strength training`. The JSON is hidden from descriptions in this app. Existing goals are not rewritten in bulk: their time field starts blank, their fine-print hashtags are offered as initial tags, and metadata is added only when that goal is explicitly saved.
+The goal editor also stores optional minutes-per-unit and editable tags in a compact JSON object at the beginning of the Beeminder title, for example `{"minutes":30,"tags":["health"]} Strength training`. The JSON is hidden from descriptions in this app. Existing goals are not rewritten in bulk: their time field starts blank, hashtags in the existing title are moved into the initial Tags field, and metadata is added only when that goal is explicitly saved. Fine print is never parsed for tags.
 
 Connected data refreshes automatically on launch, whenever the app returns to the foreground, after a restored page or network reconnection, and every five minutes while the app is visible. API requests bypass browser caches; when a refresh cannot complete, the status explicitly says that saved data is being shown instead of silently presenting it as current.
 

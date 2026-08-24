@@ -8,6 +8,12 @@
     return [...new Set(value.map(tag => String(tag).replace(/^#/, '').trim()).filter(Boolean))];
   }
 
+  function legacyTitleParts(title) {
+    const raw = String(title || '');
+    const tags = [...raw.matchAll(/#([\w-]+)/g)].map(match => match[1]);
+    return { title: raw.replace(/#[\w-]+/g, '').replace(/\s+/g, ' ').trim(), tags: normalizeTags(tags) };
+  }
+
   function metadataEnd(rawTitle) {
     if (!rawTitle.startsWith('{')) return -1;
     let depth = 0, inString = false, escaped = false;
@@ -48,5 +54,5 @@
     return `${JSON.stringify({ minutes: numericMinutes, tags: normalizeTags(tags) })} ${description}`;
   }
 
-  return { parse, serialize, normalizeTags };
+  return { parse, serialize, normalizeTags, legacyTitleParts };
 }));
