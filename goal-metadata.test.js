@@ -20,6 +20,8 @@ assert.equal(serialize('Strength training', '', ['#health', 'gym']), '{"t":["hea
 assert.equal(serialize('Read', 12.5, ['learning']), '{"m":12.5,"t":["learning"]} Read');
 assert.equal(serialize('Read', 12.5, []), '{"m":12.5} Read');
 assert.equal(serialize('Read', '', []), 'Read');
+assert.equal(serialize('First line\nSecond line', 10, []), '{"m":10} First line\nSecond line');
+assert.equal(parse('{"m":10} First line\nSecond line').title, 'First line\nSecond line');
 assert.throws(() => serialize('Read', 0, []), /greater than zero/);
 
 console.log('goal metadata tests passed');
