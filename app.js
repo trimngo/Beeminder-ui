@@ -1,12 +1,12 @@
 const sampleGoals = [
-  { slug: 'morning-pages', title: '{"m":30,"t":["morning","writing"]} Morning pages', fineprint: 'Write 3 pages', safebuf: 0, rate: 5, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 6 },
+  { slug: 'morning-pages', title: '{"m":30,"t":["morning","writing"]} Morning pages\n- [ ] Write three pages\n- [ ] Record the total', fineprint: 'Write 3 pages', safebuf: 0, rate: 5, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 6 },
   { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, rate: 5, runits: 'w', quantum: 1, pledge: 5, actionValue: 1, doneToday: false, updated: 42 },
   { slug: 'german', title: 'Practice German', fineprint: '20 sentences from a book\n#learning #deep', safebuf: 1, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: true, updated: 20 },
   { slug: 'strength', title: 'Strength training', fineprint: 'Complete today’s workout\n#health #gym', safebuf: 2, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 180 },
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.35';
+const APP_VERSION = '1.0.36';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -45,6 +45,7 @@ function loadLocalGoals() {
 }
 function persistGoals() { localStorage.setItem('bee-goals', JSON.stringify(state.goals)); }
 function isConnected() { return state.usingSample || Boolean(localStorage.getItem('bee-user') && localStorage.getItem('bee-token')); }
+function checklistUsername() { return state.usingSample ? 'sample' : localStorage.getItem('bee-user') || 'local'; }
 function updateAuthUI() {
   const connected = isConnected();
   $('#auth-gate').hidden = connected; $('#test-data-banner').hidden = !state.usingSample;
@@ -178,7 +179,23 @@ function render() {
     const node = $('#goal-template').content.firstElementChild.cloneNode(true), safety = urgency(goal);
     node.style.setProperty('--urgency', safety.color); node.classList.toggle('done', goal.doneToday);
     node.querySelector('.goal-slug').textContent = goal.slug;
-    node.querySelector('.description').textContent = goal.title;
+    const checklist = BeeGoalChecklist.parse(goal.title);
+    node.querySelector('.description').textContent = checklist.description;
+    const checklistWrap = node.querySelector('.goal-checklist');
+    if (checklist.items.length) {
+      const checked = new Set(BeeGoalChecklist.checkedItems(localStorage, checklistUsername(), goal.slug, checklist.signature));
+      checklist.items.forEach((item, index) => {
+        const label = document.createElement('label'); label.className = 'checklist-item';
+        const input = document.createElement('input'); input.type = 'checkbox'; input.checked = checked.has(index);
+        const text = document.createElement('span'); text.textContent = item;
+        input.onchange = () => {
+          if (input.checked) checked.add(index); else checked.delete(index);
+          BeeGoalChecklist.setChecked(localStorage, checklistUsername(), goal.slug, checklist.signature, [...checked]);
+          label.classList.toggle('checked', input.checked);
+        };
+        label.classList.toggle('checked', input.checked); label.append(input, text); checklistWrap.append(label);
+      });
+    } else checklistWrap.hidden = true;
     const performance = fourteenDayPerformance(goal), rateComparison = node.querySelector('.rate-comparison');
     if (performance.actual === null) {
       rateComparison.querySelector('.rate-label').textContent = performance.target === null || performance.target === 0 ? 'No comparable target' : '14d rate unavailable';
@@ -477,6 +494,8 @@ $('#data-entry-form').onsubmit = async event => {
   button.disabled = true; button.textContent = 'Adding…'; error.hidden = true;
   try {
     await createDatapoint();
+    BeeGoalChecklist.clear(localStorage, checklistUsername(), state.dataEntrySlug);
+    render();
     els.dataDialog.close();
     toast('Data added to Beeminder');
   } catch (caught) {
