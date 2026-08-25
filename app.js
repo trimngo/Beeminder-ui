@@ -1,12 +1,12 @@
 const sampleGoals = [
-  { slug: 'morning-pages', title: 'Morning pages', fineprint: 'Write 3 pages\n#morning #writing', safebuf: 0, rate: 5, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 6 },
+  { slug: 'morning-pages', title: '{"m":30,"t":["morning","writing"]} Morning pages', fineprint: 'Write 3 pages', safebuf: 0, rate: 5, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 6 },
   { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, rate: 5, runits: 'w', quantum: 1, pledge: 5, actionValue: 1, doneToday: false, updated: 42 },
   { slug: 'german', title: 'Practice German', fineprint: '20 sentences from a book\n#learning #deep', safebuf: 1, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: true, updated: 20 },
   { slug: 'strength', title: 'Strength training', fineprint: 'Complete today’s workout\n#health #gym', safebuf: 2, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 180 },
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.32';
+const APP_VERSION = '1.0.33';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -170,6 +170,7 @@ function addFilter(term) {
 }
 function render() {
   const goals = filteredGoals(); els.list.innerHTML = '';
+  renderDashboardSummary();
   goals.forEach(goal => {
     const node = $('#goal-template').content.firstElementChild.cloneNode(true), safety = urgency(goal);
     node.style.setProperty('--urgency', safety.color); node.classList.toggle('done', goal.doneToday);
@@ -225,6 +226,14 @@ function render() {
   $('#reset-filters').hidden = !connected; $('#empty-connect').hidden = connected;
   els.doneFilter.setAttribute('aria-pressed', state.hideDone);
   els.search.value = state.query; els.clear.hidden = !state.query; renderViews(); renderTimeline(); updateAuthUI();
+}
+function renderDashboardSummary() {
+  const minutes = BeeDashboardSummary.estimatedMinutesToSafety(state.goals);
+  const missing = BeeDashboardSummary.goalsMissingTimeToSafety(state.goals);
+  const paid = BeeDashboardSummary.totalPenalties(state.goals, BeeGoalStats.countDerails);
+  $('#today-time-total').textContent = BeeDashboardSummary.formatDuration(minutes);
+  $('#today-time-note').textContent = missing ? `${missing} due commitment${missing === 1 ? '' : 's'} missing a time estimate` : 'Configured commitments due today';
+  $('#penalty-total').textContent = `$${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(paid)}`;
 }
 function setMode(mode) {
   state.mode = mode; localStorage.setItem('bee-mode', mode);

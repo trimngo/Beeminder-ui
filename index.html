@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=32" />
+  <link rel="stylesheet" href="styles.css?v=33" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -31,6 +31,18 @@
       </section>
 
       <div id="list-view">
+      <section class="dashboard-summary" aria-label="Today's commitment summary">
+        <div>
+          <span>Time to stay safe today</span>
+          <strong id="today-time-total">0 min</strong>
+          <small id="today-time-note"></small>
+        </div>
+        <div>
+          <span>Penalties paid so far</span>
+          <strong id="penalty-total">$0</strong>
+          <small>Lifetime total</small>
+        </div>
+      </section>
       <section class="views-section" aria-labelledby="views-heading">
         <div class="section-heading">
           <h2 id="views-heading">Saved views</h2>
@@ -74,7 +86,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.32</span>
+        <span id="version-label">Version 1.0.33</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -176,9 +188,10 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="projection.js?v=20"></script>
   <script src="goal-stats.js?v=20"></script>
+  <script src="dashboard-summary.js?v=33"></script>
   <script src="goal-metadata.js?v=28"></script>
   <script src="goal-search.js?v=30"></script>
   <script src="accountability.js?v=25"></script>
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
 </body>
 </html>
