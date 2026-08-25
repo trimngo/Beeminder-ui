@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=33" />
+  <link rel="stylesheet" href="styles.css?v=34" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -60,6 +60,9 @@
         <p class="filter-help">Try <button type="button" data-filter="#deep">#deep</button>, <button type="button" data-filter="-#red">-#red</button>, or <button type="button" data-filter="-done:today">-done:today</button></p>
         <div class="filter-row">
           <button class="filter-button" id="done-filter" aria-pressed="true"><span class="toggle-dot"></span> Hide done today</button>
+          <label class="safe-days-control">Safe days ≤
+            <input id="safe-days-filter" type="number" inputmode="decimal" min="0" step="any" placeholder="Any" aria-label="Maximum number of safe days" />
+          </label>
           <label class="sort-control">Sort
             <select id="sort-select" aria-label="Sort commitments">
               <option value="urgency">Most urgent</option>
@@ -67,6 +70,8 @@
               <option value="recent">Recently updated</option>
               <option value="compliance-low">Lowest compliance</option>
               <option value="compliance-high">Highest compliance</option>
+              <option value="time-asc">Quickest first</option>
+              <option value="time-desc">Longest first</option>
             </select>
           </label>
         </div>
@@ -86,7 +91,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.33</span>
+        <span id="version-label">Version 1.0.34</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -191,7 +196,8 @@
   <script src="dashboard-summary.js?v=33"></script>
   <script src="goal-metadata.js?v=28"></script>
   <script src="goal-search.js?v=30"></script>
+  <script src="goal-filters.js?v=34"></script>
   <script src="accountability.js?v=25"></script>
-  <script src="app.js?v=33"></script>
+  <script src="app.js?v=34"></script>
 </body>
 </html>

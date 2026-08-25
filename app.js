@@ -6,20 +6,20 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.33';
+const APP_VERSION = '1.0.34';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
 const state = {
-  goals: [], query: '', hideDone: true, sort: 'urgency', activeView: 'all', editingSlug: null, dataEntrySlug: null, usingSample: false,
+  goals: [], query: '', hideDone: true, maxSafeDays: '', sort: 'urgency', activeView: 'all', editingSlug: null, dataEntrySlug: null, usingSample: false,
   mode: IS_LOCAL_TEST && TEST_PARAMS.get('mode') === 'timeline' ? 'timeline' : localStorage.getItem('bee-mode') || 'list', timeZone: localStorage.getItem('bee-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
   futureDays: IS_LOCAL_TEST && TEST_PARAMS.get('future') ? Number(TEST_PARAMS.get('future')) : Number(localStorage.getItem('bee-future-days')) || 7,
   views: JSON.parse(localStorage.getItem('bee-views') || '[]')
 };
 const els = {
   list: $('#goal-list'), empty: $('#empty-state'), search: $('#search-input'), clear: $('#clear-search'),
-  doneFilter: $('#done-filter'), sort: $('#sort-select'), chips: $('#view-chips'), saveDialog: $('#save-dialog'),
+  doneFilter: $('#done-filter'), safeDays: $('#safe-days-filter'), sort: $('#sort-select'), chips: $('#view-chips'), saveDialog: $('#save-dialog'),
   settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), accountabilityDialog: $('#accountability-dialog'), historyDialog: $('#goal-history-dialog'), toast: $('#toast')
 };
 
@@ -148,8 +148,11 @@ function matchesQuery(goal) { return BeeGoalSearch.matchesGoalQuery(goal, state.
 function filteredGoals() {
   return state.goals
     .filter(goal => !state.hideDone || !goal.doneToday)
+    .filter(goal => BeeGoalFilters.safeDaysAtMost(goal, state.maxSafeDays))
     .filter(matchesQuery)
     .sort((a, b) => {
+      if (state.sort === 'time-asc') return BeeGoalFilters.compareMinutesPerUnit(a, b, 'asc');
+      if (state.sort === 'time-desc') return BeeGoalFilters.compareMinutesPerUnit(a, b, 'desc');
       if (state.sort === 'name') return a.slug.localeCompare(b.slug);
       if (state.sort === 'recent') return a.updated - b.updated;
       if (['compliance-low', 'compliance-high'].includes(state.sort)) {
@@ -225,6 +228,8 @@ function render() {
   $('#empty-icon').textContent = connected ? '✓' : '→';
   $('#reset-filters').hidden = !connected; $('#empty-connect').hidden = connected;
   els.doneFilter.setAttribute('aria-pressed', state.hideDone);
+  els.safeDays.value = state.maxSafeDays;
+  els.sort.value = state.sort;
   els.search.value = state.query; els.clear.hidden = !state.query; renderViews(); renderTimeline(); updateAuthUI();
 }
 function renderDashboardSummary() {
@@ -280,9 +285,9 @@ function renderTimeline() {
 }
 function renderViews() {
   els.chips.innerHTML = '';
-  [{ name: 'All', query: '', hideDone: true, id: 'all' }, ...state.views].forEach(view => {
+  [{ name: 'All', query: '', hideDone: true, maxSafeDays: '', sort: 'urgency', id: 'all' }, ...state.views].forEach(view => {
     const button = document.createElement('button'); button.className = `view-chip${view.id === state.activeView ? ' active' : ''}`; button.textContent = view.name;
-    button.onclick = () => { state.activeView = view.id; state.query = view.query; state.hideDone = view.hideDone; render(); };
+    button.onclick = () => { state.activeView = view.id; state.query = view.query; state.hideDone = view.hideDone; state.maxSafeDays = view.maxSafeDays || ''; state.sort = view.sort || 'urgency'; render(); };
     if (view.id !== 'all') button.ondblclick = () => removeView(view.id); els.chips.append(button);
   });
 }
@@ -419,8 +424,9 @@ async function checkForUpdates() {
 els.search.oninput = event => { state.query = event.target.value; state.activeView = 'custom'; render(); };
 els.clear.onclick = () => { state.query = ''; state.activeView = 'all'; render(); };
 els.doneFilter.onclick = () => { state.hideDone = !state.hideDone; state.activeView = 'custom'; render(); };
+els.safeDays.oninput = event => { state.maxSafeDays = event.target.value; state.activeView = 'custom'; render(); };
 els.sort.onchange = event => { state.sort = event.target.value; render(); };
-$('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; render(); };
+$('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; state.maxSafeDays = ''; state.sort = 'urgency'; render(); };
 async function copyAccountabilityExport(button, messageFactory, emptyMessage) {
   const originalText = button.querySelector('strong').textContent;
   button.disabled = true; button.querySelector('strong').textContent = 'Preparing…';
@@ -458,7 +464,7 @@ $('#empty-connect').onclick = () => els.settingsDialog.showModal();
 $('#auth-gate-button').onclick = () => els.settingsDialog.showModal();
 $('#save-view-button').onclick = () => els.saveDialog.showModal();
 document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => addFilter(button.dataset.filter));
-$('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };
+$('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone, maxSafeDays: state.maxSafeDays, sort: state.sort }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };
 $('#edit-goal-form').onsubmit = async event => { event.preventDefault(); const button = $('#save-goal-button'); button.disabled = true; button.textContent = 'Saving…'; try { await saveGoalTitle(); els.editDialog.close(); toast('Commitment saved to Beeminder'); } catch (error) { toast(error.message); } finally { button.disabled = false; button.textContent = 'Save commitment to Beeminder'; } };
 $('#data-entry-form').onsubmit = async event => {
   if (event.submitter?.value === 'cancel') return;

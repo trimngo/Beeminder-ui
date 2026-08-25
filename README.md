@@ -6,6 +6,8 @@ The app icon is an SVG rather than a binary PNG, so the entire project can be re
 
 Filters support multiple required terms and exclusions. Tag filters use exact, case-insensitive matches against either JSON metadata tags or unmigrated title hashtags. For example, `#work -#red -done:today` shows work-tagged commitments while excluding red-tagged commitments and anything completed today. Tap a visible hashtag to add it to the current filter, then save the view for later.
 
+The **Safe days ≤** filter limits the list to commitments at or below a chosen safety buffer (use `0` for commitments due today). Sorting can put the quickest or longest configured commitments first by minutes per unit; commitments without a time estimate stay at the end in either direction. Saved views retain the safety filter and sort order.
+
 Each commitment starts with its Beeminder slug and description. Its status reports whether the API returned a datapoint dated today. The **+ Data** action accepts a numeric value and optional comment and records the datapoint directly in Beeminder; credentials and entry data are sent from the browser to Beeminder and are not routed through another server.
 
 The compact today-status pill on a commitment card is also its data-history control. Tapping it opens a scrollable, newest-first list of every loaded datapoint with its date, value, and comment, without adding another permanent control or taking space away from the card list.
