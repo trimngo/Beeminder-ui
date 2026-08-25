@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=36" />
+  <link rel="stylesheet" href="styles.css?v=37" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -32,21 +32,21 @@
 
       <div id="list-view">
       <section class="dashboard-summary" aria-label="Today's commitment summary">
-        <div>
+        <button class="summary-trigger" type="button" data-chart="today" aria-label="Show workload and penalty breakdown charts">
           <span>Time to stay safe today</span>
           <strong id="today-time-total">0 min</strong>
           <small id="today-time-note"></small>
-        </div>
-        <div>
+        </button>
+        <button class="summary-trigger" type="button" data-chart="filtered" aria-label="Show filtered workload breakdown chart">
           <span>Filtered workload</span>
           <strong id="filtered-time-total">0 min</strong>
           <small id="filtered-time-note">0 displayed</small>
-        </div>
-        <div>
+        </button>
+        <button class="summary-trigger" type="button" data-chart="penalties" aria-label="Show penalty breakdown chart">
           <span>Penalties paid so far</span>
           <strong id="penalty-total">$0</strong>
           <small>Lifetime total</small>
-        </div>
+        </button>
       </section>
       <section class="views-section" aria-labelledby="views-heading">
         <div class="section-heading">
@@ -96,7 +96,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.36</span>
+        <span id="version-label">Version 1.0.37</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -179,6 +179,14 @@
     </div>
   </dialog>
 
+  <dialog id="summary-charts-dialog">
+    <div class="summary-charts-content">
+      <div class="dialog-header"><div><p class="eyebrow">BREAKDOWN</p><h2>Where the totals come from</h2></div><button type="button" class="close-button" id="summary-charts-close" aria-label="Close summary charts">×</button></div>
+      <p class="dialog-copy">Tap a colored section or commitment name to see its share of the total.</p>
+      <div id="summary-charts"></div>
+    </div>
+  </dialog>
+
   <div class="datapoint-tooltip" id="datapoint-tooltip" role="dialog" aria-modal="false" aria-labelledby="datapoint-tooltip-title" hidden>
     <div class="datapoint-tooltip-head"><strong id="datapoint-tooltip-title">Data entered</strong><button type="button" id="datapoint-tooltip-close" aria-label="Close data details">×</button></div>
     <div id="datapoint-tooltip-content"></div>
@@ -199,12 +207,12 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="projection.js?v=20"></script>
   <script src="goal-stats.js?v=20"></script>
-  <script src="dashboard-summary.js?v=35"></script>
+  <script src="dashboard-summary.js?v=37"></script>
   <script src="goal-metadata.js?v=28"></script>
   <script src="goal-search.js?v=30"></script>
   <script src="goal-filters.js?v=34"></script>
   <script src="goal-checklist.js?v=36"></script>
   <script src="accountability.js?v=25"></script>
-  <script src="app.js?v=36"></script>
+  <script src="app.js?v=37"></script>
 </body>
 </html>

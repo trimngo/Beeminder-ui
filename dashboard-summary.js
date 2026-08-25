@@ -35,6 +35,23 @@
     ).length;
   }
 
+  function workloadBreakdown(goals, dueOnly = false) {
+    return (Array.isArray(goals) ? goals : []).flatMap(goal => {
+      if (dueOnly && (goal.doneToday || Number(goal.safebuf) > 0)) return [];
+      const minutes = Number(goal.minutesPerUnit);
+      if (!Number.isFinite(minutes) || minutes <= 0) return [];
+      const quantum = Math.abs(Number(goal.quantum));
+      return [{ slug: String(goal.slug || ''), value: minutes * (Number.isFinite(quantum) && quantum > 0 ? quantum : 1) }];
+    }).filter(item => item.value > 0).sort((a, b) => b.value - a.value || a.slug.localeCompare(b.slug));
+  }
+
+  function penaltyBreakdown(goals, countDerails, derailCost = 5) {
+    if (typeof countDerails !== 'function') return [];
+    return (Array.isArray(goals) ? goals : []).map(goal => ({
+      slug: String(goal.slug || ''), value: countDerails(goal.datapoints) * derailCost
+    })).filter(item => item.value > 0).sort((a, b) => b.value - a.value || a.slug.localeCompare(b.slug));
+  }
+
   function totalPenalties(goals, countDerails, derailCost = 5) {
     if (typeof countDerails !== 'function') return 0;
     return (Array.isArray(goals) ? goals : []).reduce((total, goal) =>
@@ -49,5 +66,5 @@
     return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hr`;
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, totalPenalties, formatDuration };
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, totalPenalties, formatDuration };
 }));

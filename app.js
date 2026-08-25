@@ -1,12 +1,12 @@
 const sampleGoals = [
   { slug: 'morning-pages', title: '{"m":30,"t":["morning","writing"]} Morning pages\n- [ ] Write three pages\n- [ ] Record the total', fineprint: 'Write 3 pages', safebuf: 0, rate: 5, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 6 },
-  { slug: 'inbox-zero', title: 'Inbox zero', fineprint: 'Reply to work messages\n#admin #quick', safebuf: 1, rate: 5, runits: 'w', quantum: 1, pledge: 5, actionValue: 1, doneToday: false, updated: 42 },
+  { slug: 'inbox-zero', title: '{"m":10,"t":["admin","quick"]} Inbox zero', fineprint: 'Reply to work messages', safebuf: 1, rate: 5, runits: 'w', quantum: 1, pledge: 5, actionValue: 1, doneToday: false, updated: 42 },
   { slug: 'german', title: 'Practice German', fineprint: '20 sentences from a book\n#learning #deep', safebuf: 1, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: true, updated: 20 },
-  { slug: 'strength', title: 'Strength training', fineprint: 'Complete today’s workout\n#health #gym', safebuf: 2, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 180 },
-  { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
-  { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
+  { slug: 'strength', title: '{"m":45,"t":["health","gym"]} Strength training', fineprint: 'Complete today’s workout', safebuf: 2, rate: 3, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 180 },
+  { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
+  { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.36';
+const APP_VERSION = '1.0.37';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -20,7 +20,7 @@ const state = {
 const els = {
   list: $('#goal-list'), empty: $('#empty-state'), search: $('#search-input'), clear: $('#clear-search'),
   doneFilter: $('#done-filter'), safeDays: $('#safe-days-filter'), sort: $('#sort-select'), chips: $('#view-chips'), saveDialog: $('#save-dialog'),
-  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), accountabilityDialog: $('#accountability-dialog'), historyDialog: $('#goal-history-dialog'), toast: $('#toast')
+  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), accountabilityDialog: $('#accountability-dialog'), historyDialog: $('#goal-history-dialog'), summaryChartsDialog: $('#summary-charts-dialog'), toast: $('#toast')
 };
 
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
@@ -87,7 +87,7 @@ async function copyText(text) {
 }
 function createSampleGoals() {
   const today = todayDaystamp(state.timeZone);
-  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goal.actionValue || goalIndex + 1, comment: goalIndex === 1 && index === 5 ? '#DERAIL' : index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
+  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goal.actionValue || goalIndex + 1, comment: (goalIndex === 1 || goalIndex === 3) && index === 5 ? '#DERAIL' : index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
 }
 function shiftDaystamp(daystamp, days) {
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
@@ -260,6 +260,37 @@ function renderDashboardSummary(filtered = filteredGoals()) {
   $('#filtered-time-total').textContent = BeeDashboardSummary.formatDuration(filteredMinutes);
   $('#filtered-time-note').textContent = `${filtered.length} displayed${filteredMissing ? ` · ${filteredMissing} missing time` : ''}`;
   $('#penalty-total').textContent = `$${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(paid)}`;
+}
+function renderBreakdownChart(host, { id, title, items, formatter }) {
+  const section = document.createElement('section'); section.className = 'breakdown-chart'; section.dataset.chart = id;
+  const heading = document.createElement('h3'); heading.textContent = title; section.append(heading);
+  const total = items.reduce((sum, item) => sum + item.value, 0), bar = document.createElement('div'); bar.className = 'segmented-bar';
+  const detail = document.createElement('p'); detail.className = 'chart-detail';
+  const legend = document.createElement('div'); legend.className = 'chart-legend';
+  if (!total) {
+    bar.classList.add('empty'); detail.textContent = 'No configured contributions in this total.';
+  } else {
+    const select = (item, index) => {
+      const percent = item.value / total * 100;
+      detail.textContent = `${item.slug} · ${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(percent)}% · ${formatter(item.value)}`;
+      section.querySelectorAll('[aria-pressed]').forEach(control => control.setAttribute('aria-pressed', String(control.dataset.index === String(index))));
+    };
+    items.forEach((item, index) => {
+      const color = `hsl(${(index * 67 + 38) % 360} 68% 52%)`, percent = item.value / total * 100;
+      const segment = document.createElement('button'); segment.type = 'button'; segment.className = 'bar-segment'; segment.style.cssText = `--segment-color:${color};--segment-width:${percent}%`; segment.dataset.index = String(index); segment.setAttribute('aria-pressed', 'false'); segment.setAttribute('aria-label', `${item.slug}, ${percent.toFixed(1)} percent, ${formatter(item.value)}`); segment.onclick = () => select(item, index); bar.append(segment);
+      const key = document.createElement('button'); key.type = 'button'; key.className = 'chart-key'; key.dataset.index = String(index); key.setAttribute('aria-pressed', 'false'); key.innerHTML = `<i style="--segment-color:${color}"></i><span></span>`; key.querySelector('span').textContent = item.slug; key.onclick = () => select(item, index); legend.append(key);
+    });
+    detail.textContent = `${items.length} contributing commitment${items.length === 1 ? '' : 's'} · ${formatter(total)} total`;
+  }
+  section.append(bar, detail, legend); host.append(section);
+}
+function openSummaryCharts(focusChart) {
+  const filtered = filteredGoals(), host = $('#summary-charts'); host.innerHTML = '';
+  renderBreakdownChart(host, { id: 'today', title: 'Time to stay safe today', items: BeeDashboardSummary.workloadBreakdown(state.goals, true), formatter: BeeDashboardSummary.formatDuration });
+  renderBreakdownChart(host, { id: 'filtered', title: 'Filtered workload', items: BeeDashboardSummary.workloadBreakdown(filtered), formatter: BeeDashboardSummary.formatDuration });
+  renderBreakdownChart(host, { id: 'penalties', title: 'Penalties paid so far', items: BeeDashboardSummary.penaltyBreakdown(state.goals, BeeGoalStats.countDerails), formatter: value => `$${formatDailyRate(value)}` });
+  els.summaryChartsDialog.showModal();
+  host.querySelector(`[data-chart="${focusChart}"]`)?.scrollIntoView({ block: 'nearest' });
 }
 function setMode(mode) {
   state.mode = mode; localStorage.setItem('bee-mode', mode);
@@ -467,6 +498,8 @@ async function copyAccountabilityExport(button, messageFactory, emptyMessage) {
 $('#accountability-button').onclick = () => els.accountabilityDialog.showModal();
 $('#accountability-dialog-close').onclick = () => els.accountabilityDialog.close();
 $('#goal-history-close').onclick = () => els.historyDialog.close();
+$('#summary-charts-close').onclick = () => els.summaryChartsDialog.close();
+document.querySelectorAll('.summary-trigger').forEach(button => button.onclick = () => openSummaryCharts(button.dataset.chart));
 $('#edit-goal-close').onclick = () => els.editDialog.close();
 $('#copy-today-option').onclick = event => copyAccountabilityExport(
   event.currentTarget, todayAccountabilityMessage, 'No Beeminder entries today'
