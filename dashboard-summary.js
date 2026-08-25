@@ -20,6 +20,21 @@
     ).length;
   }
 
+  function estimatedMinutesForGoals(goals) {
+    return (Array.isArray(goals) ? goals : []).reduce((total, goal) => {
+      const minutes = Number(goal.minutesPerUnit);
+      if (!Number.isFinite(minutes) || minutes <= 0) return total;
+      const quantum = Math.abs(Number(goal.quantum));
+      return total + minutes * (Number.isFinite(quantum) && quantum > 0 ? quantum : 1);
+    }, 0);
+  }
+
+  function goalsMissingTime(goals) {
+    return (Array.isArray(goals) ? goals : []).filter(goal =>
+      !Number.isFinite(Number(goal.minutesPerUnit)) || Number(goal.minutesPerUnit) <= 0
+    ).length;
+  }
+
   function totalPenalties(goals, countDerails, derailCost = 5) {
     if (typeof countDerails !== 'function') return 0;
     return (Array.isArray(goals) ? goals : []).reduce((total, goal) =>
@@ -34,5 +49,5 @@
     return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hr`;
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, totalPenalties, formatDuration };
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, totalPenalties, formatDuration };
 }));

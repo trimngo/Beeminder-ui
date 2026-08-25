@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: 'Reach out', fineprint: 'Make one request to connect\n#social #quick', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: 'Read a book', fineprint: 'Read 20 focused pages\n#learning #deep', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.34';
+const APP_VERSION = '1.0.35';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -173,7 +173,7 @@ function addFilter(term) {
 }
 function render() {
   const goals = filteredGoals(); els.list.innerHTML = '';
-  renderDashboardSummary();
+  renderDashboardSummary(goals);
   goals.forEach(goal => {
     const node = $('#goal-template').content.firstElementChild.cloneNode(true), safety = urgency(goal);
     node.style.setProperty('--urgency', safety.color); node.classList.toggle('done', goal.doneToday);
@@ -232,12 +232,16 @@ function render() {
   els.sort.value = state.sort;
   els.search.value = state.query; els.clear.hidden = !state.query; renderViews(); renderTimeline(); updateAuthUI();
 }
-function renderDashboardSummary() {
+function renderDashboardSummary(filtered = filteredGoals()) {
   const minutes = BeeDashboardSummary.estimatedMinutesToSafety(state.goals);
   const missing = BeeDashboardSummary.goalsMissingTimeToSafety(state.goals);
+  const filteredMinutes = BeeDashboardSummary.estimatedMinutesForGoals(filtered);
+  const filteredMissing = BeeDashboardSummary.goalsMissingTime(filtered);
   const paid = BeeDashboardSummary.totalPenalties(state.goals, BeeGoalStats.countDerails);
   $('#today-time-total').textContent = BeeDashboardSummary.formatDuration(minutes);
   $('#today-time-note').textContent = missing ? `${missing} due commitment${missing === 1 ? '' : 's'} missing a time estimate` : 'Configured commitments due today';
+  $('#filtered-time-total').textContent = BeeDashboardSummary.formatDuration(filteredMinutes);
+  $('#filtered-time-note').textContent = `${filtered.length} displayed${filteredMissing ? ` · ${filteredMissing} missing time` : ''}`;
   $('#penalty-total').textContent = `$${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(paid)}`;
 }
 function setMode(mode) {

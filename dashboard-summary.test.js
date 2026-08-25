@@ -11,6 +11,8 @@ const goals = [
 
 assert.equal(summary.estimatedMinutesToSafety(goals), 60);
 assert.equal(summary.goalsMissingTimeToSafety(goals), 1);
+assert.equal(summary.estimatedMinutesForGoals(goals), 210);
+assert.equal(summary.goalsMissingTime(goals), 1);
 assert.equal(summary.totalPenalties(goals, points => points.filter(point => point.derail || point.comment === '#DERAIL').length), 10);
 assert.equal(summary.formatDuration(45), '45 min');
 assert.match(summary.formatDuration(90), /^1[.,]5 hr$/);
