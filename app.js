@@ -6,13 +6,13 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.37';
+const APP_VERSION = '1.0.38';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
 const state = {
-  goals: [], query: '', hideDone: true, maxSafeDays: '', sort: 'urgency', activeView: 'all', editingSlug: null, dataEntrySlug: null, usingSample: false,
+  goals: [], query: '', hideDone: true, maxSafeDays: '', sort: 'urgency', activeView: 'all', editingSlug: null, dataEntrySlug: null, calendarSlug: null, usingSample: false,
   mode: IS_LOCAL_TEST && TEST_PARAMS.get('mode') === 'timeline' ? 'timeline' : localStorage.getItem('bee-mode') || 'list', timeZone: localStorage.getItem('bee-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
   futureDays: IS_LOCAL_TEST && TEST_PARAMS.get('future') ? Number(TEST_PARAMS.get('future')) : Number(localStorage.getItem('bee-future-days')) || 7,
   views: JSON.parse(localStorage.getItem('bee-views') || '[]')
@@ -20,7 +20,7 @@ const state = {
 const els = {
   list: $('#goal-list'), empty: $('#empty-state'), search: $('#search-input'), clear: $('#clear-search'),
   doneFilter: $('#done-filter'), safeDays: $('#safe-days-filter'), sort: $('#sort-select'), chips: $('#view-chips'), saveDialog: $('#save-dialog'),
-  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), accountabilityDialog: $('#accountability-dialog'), historyDialog: $('#goal-history-dialog'), summaryChartsDialog: $('#summary-charts-dialog'), toast: $('#toast')
+  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), calendarDialog: $('#calendar-dialog'), accountabilityDialog: $('#accountability-dialog'), historyDialog: $('#goal-history-dialog'), summaryChartsDialog: $('#summary-charts-dialog'), toast: $('#toast')
 };
 
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
@@ -226,6 +226,11 @@ function render() {
     status.setAttribute('aria-label', `Show all data entries for ${goal.slug}`);
     status.onclick = () => openGoalHistory(goal.slug);
     node.querySelector('.edit-goal-button').onclick = () => openGoalEditor(goal.slug);
+    const calendarButton = node.querySelector('.calendar-button');
+    calendarButton.disabled = !(Number(goal.minutesPerUnit) > 0);
+    calendarButton.title = calendarButton.disabled ? 'Set minutes per unit before scheduling' : 'Schedule in Google Calendar';
+    calendarButton.setAttribute('aria-label', `Schedule ${goal.slug} in Google Calendar`);
+    calendarButton.onclick = () => openCalendarDialog(goal.slug);
     const addDataButton = node.querySelector('.add-data-button');
     addDataButton.disabled = state.usingSample;
     addDataButton.title = state.usingSample ? 'Data entry is unavailable for local test data' : '';
@@ -350,6 +355,27 @@ function openGoalEditor(slug) {
   const legacy = BeeGoalMetadata.legacyTitleParts(goal.title);
   state.editingSlug = slug; $('#edit-goal-slug').textContent = slug; $('#edit-goal-title').value = goal.hasMetadata ? goal.title : legacy.title; $('#edit-goal-minutes').value = goal.minutesPerUnit ?? ''; $('#edit-goal-tags').value = (goal.hasMetadata ? goal.metadataTags : legacy.tags).join(', '); $('#edit-goal-fineprint').value = goal.fineprint;
   els.editDialog.showModal();
+}
+function localDateAndTime(timeZone) {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date(Date.now() + 15 * 60 * 1000)).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+  const roundedMinute = Math.floor(Number(parts.minute) / 15) * 15;
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${String(roundedMinute).padStart(2, '0')}` };
+}
+function openCalendarDialog(slug) {
+  const goal = state.goals.find(item => item.slug === slug); if (!goal || !(Number(goal.minutesPerUnit) > 0)) return;
+  const start = localDateAndTime(state.timeZone), quantum = Math.abs(Number(goal.quantum));
+  state.calendarSlug = slug; $('#calendar-goal-title').textContent = goal.slug; $('#calendar-date').value = start.date; $('#calendar-time').value = start.time;
+  $('#calendar-duration').value = String(Math.max(1, Math.ceil(goal.minutesPerUnit * (Number.isFinite(quantum) && quantum > 0 ? quantum : 1))));
+  els.calendarDialog.showModal();
+}
+function googleCalendarUrl() {
+  const goal = state.goals.find(item => item.slug === state.calendarSlug); if (!goal) throw new Error('Choose a commitment first');
+  return BeeGoogleCalendar.eventUrl({
+    title: BeeGoalChecklist.parse(goal.title).description || goal.slug,
+    date: $('#calendar-date').value, time: $('#calendar-time').value, duration: $('#calendar-duration').value, timeZone: state.timeZone,
+    details: `${goal.slug}\n${urgency(goal).label}\nPrepared by Bee Today`
+  });
 }
 async function saveGoalTitle() {
   const goal = state.goals.find(item => item.slug === state.editingSlug), user = localStorage.getItem('bee-user'), token = localStorage.getItem('bee-token');
@@ -514,12 +540,21 @@ $('#timeline-tab').onclick = () => setMode('timeline');
 $('#future-days').onchange = event => { state.futureDays = Number(event.target.value); localStorage.setItem('bee-future-days', String(state.futureDays)); closeDatapointTooltip(); renderTimeline(); };
 $('#datapoint-tooltip-close').onclick = closeDatapointTooltip;
 $('#data-dialog-close').onclick = () => els.dataDialog.close();
+$('#calendar-dialog-close').onclick = () => els.calendarDialog.close();
 $('#empty-connect').onclick = () => els.settingsDialog.showModal();
 $('#auth-gate-button').onclick = () => els.settingsDialog.showModal();
 $('#save-view-button').onclick = () => els.saveDialog.showModal();
 document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => addFilter(button.dataset.filter));
 $('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone, maxSafeDays: state.maxSafeDays, sort: state.sort }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };
 $('#edit-goal-form').onsubmit = async event => { event.preventDefault(); const button = $('#save-goal-button'); button.disabled = true; button.textContent = 'Saving…'; try { await saveGoalTitle(); els.editDialog.close(); toast('Commitment saved to Beeminder'); } catch (error) { toast(error.message); } finally { button.disabled = false; button.textContent = 'Save commitment to Beeminder'; } };
+$('#calendar-form').onsubmit = event => {
+  event.preventDefault();
+  try {
+    const url = googleCalendarUrl();
+    sessionStorage.setItem('bee-calendar-return-scroll', String(scrollY));
+    location.href = url;
+  } catch (error) { toast(error.message); }
+};
 $('#data-entry-form').onsubmit = async event => {
   if (event.submitter?.value === 'cancel') return;
   event.preventDefault();
@@ -556,6 +591,11 @@ if ('serviceWorker' in navigator) window.addEventListener('load', () => navigato
 $('#version-label').textContent = `Version ${APP_VERSION}`; $('#update-button').onclick = checkForUpdates; window.addEventListener('load', checkForUpdates); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdates(); });
 loadLocalGoals();
 setMode(state.mode);
+const calendarReturnScroll = sessionStorage.getItem('bee-calendar-return-scroll');
+if (calendarReturnScroll !== null) {
+  sessionStorage.removeItem('bee-calendar-return-scroll');
+  requestAnimationFrame(() => scrollTo(0, Number(calendarReturnScroll) || 0));
+}
 // Refresh on every launch, return from the iOS background, restored page, and
 // network reconnection. The interval also prevents a long-open app going stale.
 refreshGoals().catch(() => {});

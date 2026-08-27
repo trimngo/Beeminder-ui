@@ -12,6 +12,8 @@ Each commitment starts with its Beeminder slug and description. Its status repor
 
 Description lines written as Markdown checklist items, such as `- [ ] Draft` or `- [x] Review`, appear as checkboxes directly on the commitment card. Their checked state is stored immediately on the current device and survives reloads or switching away from the app without changing the Beeminder description. Editing the checklist description resets all its saved checks, and a successful datapoint submission clears the checks for that commitment.
 
+Commitments with configured minutes per unit have a calendar action that prepares a timed Google Calendar event. Choose its date, start time, and duration in Bee Today, then review and save it in Google Calendar. This uses a normal event-template link: Bee Today receives no calendar access and cannot read, update, confirm, or delete calendar events.
+
 The compact today-status pill on a commitment card is also its data-history control. Tapping it opens a scrollable, newest-first list of every loaded datapoint with its date, value, and comment, without adding another permanent control or taking space away from the card list.
 
 The app loads goals and recent datapoints through Beeminder’s user-associations response. A goal counts as done today when a returned datapoint’s `daystamp` matches today in the Beeminder account’s timezone, rather than the browser’s timezone.
