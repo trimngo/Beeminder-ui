@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.39';
+const APP_VERSION = '1.0.40';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -356,15 +356,9 @@ function openGoalEditor(slug) {
   state.editingSlug = slug; $('#edit-goal-slug').textContent = slug; $('#edit-goal-title').value = goal.hasMetadata ? goal.title : legacy.title; $('#edit-goal-minutes').value = goal.minutesPerUnit ?? ''; $('#edit-goal-tags').value = (goal.hasMetadata ? goal.metadataTags : legacy.tags).join(', '); $('#edit-goal-fineprint').value = goal.fineprint;
   els.editDialog.showModal();
 }
-function localDateAndTime(timeZone) {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-    .formatToParts(new Date(Date.now() + 15 * 60 * 1000)).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
-  const roundedMinute = Math.floor(Number(parts.minute) / 15) * 15;
-  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${String(roundedMinute).padStart(2, '0')}` };
-}
 function openCalendarDialog(slug) {
   const goal = state.goals.find(item => item.slug === slug); if (!goal || !(Number(goal.minutesPerUnit) > 0)) return;
-  const start = localDateAndTime(state.timeZone), quantum = Math.abs(Number(goal.quantum));
+  const start = BeeGoogleCalendar.defaultStart(new Date(), state.timeZone), quantum = Math.abs(Number(goal.quantum));
   state.calendarSlug = slug; $('#calendar-goal-title').textContent = goal.slug; $('#calendar-date').value = start.date; $('#calendar-time').value = start.time;
   $('#calendar-duration').value = String(Math.max(1, Math.ceil(goal.minutesPerUnit * (Number.isFinite(quantum) && quantum > 0 ? quantum : 1))));
   els.calendarDialog.showModal();

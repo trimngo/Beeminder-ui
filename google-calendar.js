@@ -19,6 +19,21 @@
     };
   }
 
+  function nextDate(date) {
+    const [year, month, day] = date.split('-').map(Number), value = new Date(Date.UTC(year, month - 1, day + 1));
+    return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, '0')}-${String(value.getUTCDate()).padStart(2, '0')}`;
+  }
+
+  function defaultStart(now = new Date(), timeZone = 'UTC') {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(now).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+    const date = `${parts.year}-${parts.month}-${parts.day}`, hour = Number(parts.hour), minute = Number(parts.minute);
+    if (hour < 8) return { date, time: '08:00' };
+    const proposedMinutes = Math.floor((hour * 60 + minute + 15) / 15) * 15;
+    if (proposedMinutes >= 21 * 60) return { date: nextDate(date), time: '08:00' };
+    return { date, time: `${String(Math.floor(proposedMinutes / 60)).padStart(2, '0')}:${String(proposedMinutes % 60).padStart(2, '0')}` };
+  }
+
   function eventUrl({ title, date, time, duration, timeZone, details = '' }) {
     const end = addMinutes(date, time, duration);
     const params = new URLSearchParams({
@@ -31,5 +46,5 @@
     return `https://calendar.google.com/calendar/render?${params}`;
   }
 
-  return { addMinutes, eventUrl };
+  return { addMinutes, defaultStart, eventUrl };
 }));
