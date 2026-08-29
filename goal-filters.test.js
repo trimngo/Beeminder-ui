@@ -22,5 +22,10 @@ assert.equal(selectedDays(projectedGoal, [1, 2], '20260829', projectedDeadlineOf
 assert.equal(selectedDays(projectedGoal, [1, 3], '20260829', projectedDeadlineOffsets), false);
 assert.equal(selectedDays({ ...projectedGoal, doneToday: true }, [0], '20260829', projectedDeadlineOffsets), true);
 assert.equal(selectedDays({ ...projectedGoal, doneToday: true }, [1], '20260829', projectedDeadlineOffsets), false);
+const matchesTags = require('./goal-filters.js').matchesTagStates;
+assert.equal(matchesTags(['health', 'quick'], { health: 'include', deep: 'exclude' }), true);
+assert.equal(matchesTags(['health', 'deep'], { health: 'include', deep: 'exclude' }), false);
+assert.equal(matchesTags(['health'], { health: 'exclude' }), false);
+assert.equal(matchesTags(['health'], { quick: 'include' }), false);
 
 console.log('goal filter tests passed');

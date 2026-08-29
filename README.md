@@ -1,12 +1,14 @@
 # Bee Today
 
-A mobile-first, installable Beeminder focus dashboard for GitHub Pages. It supports keyword/tag filtering, saved views, hiding goals completed today, urgency sorting, offline caching, and optional direct Beeminder API connection.
+A mobile-first, installable Beeminder focus dashboard for GitHub Pages. It supports keyword and three-state tag filtering, urgency sorting, offline caching, and optional direct Beeminder API connection.
 
 The app icon is an SVG rather than a binary PNG, so the entire project can be reviewed and submitted through text-only patch systems.
 
-Filters support multiple required terms and exclusions. Tag filters use exact, case-insensitive matches against either JSON metadata tags or unmigrated title hashtags. For example, `#work -#red -done:today` shows work-tagged commitments while excluding red-tagged commitments and anything completed today. Tap a visible hashtag to add it to the current filter, then save the view for later.
+The filter area lists every tag found in the commitments. Each tag cycles through neutral, required (green check), and excluded (red strike-through), and multiple tag states can be combined. Tag matching is exact and case-insensitive against either JSON metadata tags or unmigrated title hashtags. Keyword search remains available separately.
 
-The **Safe days ≤** filter limits the list to commitments at or below a chosen safety buffer (use `0` for commitments due today). Sorting can put the quickest or longest configured commitments first by minutes per unit; commitments without a time estimate stay at the end in either direction. Saved views retain the safety filter and sort order.
+The **Safe days ≤** filter limits the list to commitments at or below a chosen safety buffer (use `0` for commitments due today). Sorting can put the quickest or longest configured commitments first by minutes per unit; commitments without a time estimate stay at the end in either direction.
+
+Commitments with data entered today always appear in a separate **Done today** section at the bottom of the list. Their cards remain grayed out, while unfinished commitments stay together above them.
 
 Each commitment starts with its Beeminder slug and description. Its status reports whether the API returned a datapoint dated today. The **+ Data** action accepts a numeric value and optional comment and records the datapoint directly in Beeminder; credentials and entry data are sent from the browser to Beeminder and are not routed through another server.
 

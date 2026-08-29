@@ -6,6 +6,8 @@
 @media (min-width:700px){.app-shell{padding-top:36px}.goal-list{grid-template-columns:1fr 1fr}.summary{padding:20px}.topbar h1{font-size:3rem}}
 @media (display-mode:standalone){.app-shell{padding-top:calc(env(safe-area-inset-top) + 12px)}}
 
+.tag-filters{display:flex;gap:6px;overflow-x:auto;padding:9px 2px 3px;scrollbar-width:none}.tag-filters::-webkit-scrollbar{display:none}.tag-filter{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;background:#fff;padding:6px 9px;color:#68635a;font-size:.68rem}.tag-filter.include{border-color:#2eaa68;background:#e1f4e9;color:#187342;font-weight:800}.tag-filter.exclude{border-color:#ef5b4c;background:#fff0ed;color:#b53e32;text-decoration:line-through;font-weight:800}.filter-row{justify-content:flex-end;margin-top:9px}.done-today-heading{grid-column:1/-1;margin:12px 2px 0;padding-top:15px;border-top:1px solid var(--line);font-size:.9rem;color:#625e56}
+
 /* The working list is the primary screen; keep its controls compact. */
 .views-section{padding-top:4px}.filter-help{margin:8px 5px 2px;color:var(--muted);font-size:.7rem}.filter-help button{border:0;background:#f2ede3;color:#6f5520;border-radius:6px;padding:3px 5px}.list-actions{display:flex;align-items:center;gap:9px}.icon-button.compact{width:34px;height:34px;border-radius:11px;font-size:.95rem;box-shadow:none}.tag{border:0;cursor:pointer}.tag:active,.filter-help button:active{background:#ead9a8}
 .accountability-button{height:34px;border:1px solid #e2c260;border-radius:11px;background:#fff5ce;color:#715100;padding:0 9px;font-size:.68rem;font-weight:800}.accountability-button:active{background:#f9e59d}.accountability-button:disabled{opacity:.65}.list-actions #updated-label{max-width:94px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

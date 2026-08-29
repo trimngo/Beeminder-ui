@@ -32,5 +32,12 @@
     return selected.some(offset => projectedOnDay(goal, offset, today, projectOffsets));
   }
 
-  return { safeDaysAtMost, compareMinutesPerUnit, projectedOnDay, projectedOnSelectedDays };
+  function matchesTagStates(tags, states) {
+    const available = new Set((Array.isArray(tags) ? tags : []).map(tag => String(tag).toLowerCase()));
+    return Object.entries(states && typeof states === 'object' ? states : {}).every(([tag, mode]) =>
+      mode === 'include' ? available.has(tag.toLowerCase()) : mode === 'exclude' ? !available.has(tag.toLowerCase()) : true
+    );
+  }
+
+  return { safeDaysAtMost, compareMinutesPerUnit, projectedOnDay, projectedOnSelectedDays, matchesTagStates };
 }));
