@@ -43,8 +43,9 @@
     return projectedDeadlineOffsetsForAction(goal, horizon, estimatedActionValue(goal, today));
   }
   function projectedQuantumDeadlineOffsets(goal, horizon) {
-    const quantum = Math.abs(Number(goal.quantum));
-    return projectedDeadlineOffsetsForAction(goal, horizon, Number.isFinite(quantum) && quantum > 0 ? quantum : 1);
+    // Workload metadata defines the time for an input of 1. Beeminder's
+    // quantum is datapoint precision (often 0.01), not a normal work session.
+    return projectedDeadlineOffsetsForAction(goal, horizon, 1);
   }
   return { dailyRate, estimatedActionValue, projectedDeadlineOffsets, projectedQuantumDeadlineOffsets };
 }));

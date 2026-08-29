@@ -33,6 +33,8 @@ const stableForecastGoal = { rate: 2, runits: 'w', safebuf: 1, minutesPerUnit: 1
 const beforeEntry = summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedQuantumDeadlineOffsets);
 stableForecastGoal.datapoints.push({ daystamp: '20260829', value: 20 });
 assert.deepEqual(summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedQuantumDeadlineOffsets), beforeEntry);
+const preciseEmailGoal = { rate: 5, runits: 'w', safebuf: 2, minutesPerUnit: 10, quantum: 0.01, doneToday: false, datapoints: [] };
+assert.deepEqual(summary.sevenDayWorkload([preciseEmailGoal], '20260829', projection.projectedQuantumDeadlineOffsets), [0, 0, 10, 10, 10, 0, 10]);
 assert.equal(summary.formatCompactDuration(0), '0m');
 assert.equal(summary.formatCompactDuration(45), '45m');
 assert.match(summary.formatCompactDuration(90), /^1[.,]5h$/);

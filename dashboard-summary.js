@@ -58,12 +58,9 @@
     (Array.isArray(goals) ? goals : []).forEach(goal => {
       const minutes = Number(goal.minutesPerUnit);
       if (!Number.isFinite(minutes) || minutes <= 0) return;
-      // A workload unit has to remain stable when a datapoint is added. Recent
-      // datapoint values describe past behavior, not the size of the next
-      // minimum action, so use Beeminder's quantum for both cadence and time.
-      const quantum = Math.abs(Number(goal.quantum));
-      const action = Number.isFinite(quantum) && quantum > 0 ? quantum : 1;
-      if (!Number.isFinite(action) || action <= 0) return;
+      // minutesPerUnit is the time for an input of 1. Quantum is datapoint
+      // precision and must not create extra tiny forecast actions.
+      const action = 1;
       projectOffsets(goal, dayCount - 1, today).forEach(offset => {
         if (offset >= 0 && offset < dayCount && !(offset === 0 && goal.doneToday)) totals[offset] += minutes * action;
       });
