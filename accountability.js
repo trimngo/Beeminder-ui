@@ -42,5 +42,20 @@
     return `My commitments:\n\n${items.join('\n\n')}`;
   }
 
-  return { formatGoalRate, commitmentsMessage, withoutHashtags };
+  function todayWinsMessage(goals, today) {
+    const completed = (Array.isArray(goals) ? goals : []).filter(goal =>
+      (Array.isArray(goal.datapoints) ? goal.datapoints : []).some(point => point.daystamp === today)
+    );
+    if (!completed.length) return '';
+    const items = completed.map((goal, index) => {
+      const messages = goal.datapoints
+        .filter(point => point.daystamp === today && point.comment?.trim())
+        .flatMap(point => point.comment.split(/\r?\n|\\n/).map(line => line.trim()).filter(Boolean));
+      const logs = messages.length ? `\n${messages.map(message => `   - ${message}`).join('\n')}` : '';
+      return `${index + 1}. ${goal.slug} — ${goal.title}${logs}`;
+    });
+    return `Today’s wins\n\n${items.join('\n\n')}`;
+  }
+
+  return { formatGoalRate, commitmentsMessage, todayWinsMessage, withoutHashtags };
 }));
