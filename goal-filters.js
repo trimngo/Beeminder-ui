@@ -19,5 +19,11 @@
     return (direction === 'desc' ? -result : result) || String(a.slug || '').localeCompare(String(b.slug || ''));
   }
 
-  return { safeDaysAtMost, compareMinutesPerUnit };
+  function projectedOnDay(goal, offset, today, projectOffsets) {
+    const dayOffset = Number(offset);
+    if (!Number.isInteger(dayOffset) || dayOffset < 0 || typeof projectOffsets !== 'function') return false;
+    return projectOffsets(goal, dayOffset, today).has(dayOffset);
+  }
+
+  return { safeDaysAtMost, compareMinutesPerUnit, projectedOnDay };
 }));

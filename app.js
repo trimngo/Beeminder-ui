@@ -6,13 +6,13 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.42';
+const APP_VERSION = '1.0.43';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
 const state = {
-  goals: [], query: '', hideDone: true, maxSafeDays: '', sort: 'urgency', activeView: 'all', editingSlug: null, dataEntrySlug: null, calendarSlug: null, usingSample: false,
+  goals: [], query: '', hideDone: true, maxSafeDays: '', forecastOffset: null, sort: 'urgency', activeView: 'all', editingSlug: null, dataEntrySlug: null, calendarSlug: null, usingSample: false,
   mode: IS_LOCAL_TEST && TEST_PARAMS.get('mode') === 'timeline' ? 'timeline' : localStorage.getItem('bee-mode') || 'list', timeZone: localStorage.getItem('bee-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
   futureDays: IS_LOCAL_TEST && TEST_PARAMS.get('future') ? Number(TEST_PARAMS.get('future')) : Number(localStorage.getItem('bee-future-days')) || 7,
   views: JSON.parse(localStorage.getItem('bee-views') || '[]')
@@ -147,9 +147,11 @@ function tags(text) { return [...text.matchAll(/#[\w-]+/g)].map(match => match[0
 function queryTokens(query) { return BeeGoalSearch.queryTokens(query); }
 function matchesQuery(goal) { return BeeGoalSearch.matchesGoalQuery(goal, state.query); }
 function filteredGoals() {
+  const today = todayDaystamp(state.timeZone);
   return state.goals
     .filter(goal => !state.hideDone || !goal.doneToday)
     .filter(goal => BeeGoalFilters.safeDaysAtMost(goal, state.maxSafeDays))
+    .filter(goal => state.forecastOffset === null || BeeGoalFilters.projectedOnDay(goal, state.forecastOffset, today, BeeProjection.projectedDeadlineOffsets))
     .filter(matchesQuery)
     .sort((a, b) => {
       if (state.sort === 'time-asc') return BeeGoalFilters.compareMinutesPerUnit(a, b, 'asc');
@@ -277,11 +279,14 @@ function renderWorkloadForecast() {
   const totals = BeeDashboardSummary.sevenDayWorkload(state.goals, today, BeeProjection.projectedDeadlineOffsets, BeeProjection.estimatedActionValue);
   const maximum = Math.max(...totals, 1); host.innerHTML = '';
   totals.forEach((minutes, offset) => {
-    const daystamp = shiftDaystamp(today, offset), item = document.createElement('div'); item.className = 'forecast-day';
+    const daystamp = shiftDaystamp(today, offset), item = document.createElement('button'); item.type = 'button'; item.className = 'forecast-day';
     item.style.setProperty('--forecast-load', `${Math.max(5, minutes / maximum * 100)}%`);
+    item.classList.toggle('active', state.forecastOffset === offset); item.setAttribute('aria-pressed', String(state.forecastOffset === offset));
     const label = document.createElement('span'); label.textContent = forecastDayLabel(daystamp, offset);
     const value = document.createElement('strong'); value.textContent = BeeDashboardSummary.formatCompactDuration(minutes);
     item.title = `${forecastDayLabel(daystamp, offset)}: ${BeeDashboardSummary.formatDuration(minutes)} predicted`;
+    item.setAttribute('aria-label', `${item.title}; filter commitments for this day`);
+    item.onclick = () => { state.forecastOffset = state.forecastOffset === offset ? null : offset; state.activeView = 'custom'; render(); };
     item.append(label, value); host.append(item);
   });
 }
@@ -361,9 +366,9 @@ function renderTimeline() {
 }
 function renderViews() {
   els.chips.innerHTML = '';
-  [{ name: 'All', query: '', hideDone: true, maxSafeDays: '', sort: 'urgency', id: 'all' }, ...state.views].forEach(view => {
+  [{ name: 'All', query: '', hideDone: true, maxSafeDays: '', forecastOffset: null, sort: 'urgency', id: 'all' }, ...state.views].forEach(view => {
     const button = document.createElement('button'); button.className = `view-chip${view.id === state.activeView ? ' active' : ''}`; button.textContent = view.name;
-    button.onclick = () => { state.activeView = view.id; state.query = view.query; state.hideDone = view.hideDone; state.maxSafeDays = view.maxSafeDays || ''; state.sort = view.sort || 'urgency'; render(); };
+    button.onclick = () => { state.activeView = view.id; state.query = view.query; state.hideDone = view.hideDone; state.maxSafeDays = view.maxSafeDays || ''; state.forecastOffset = Number.isInteger(view.forecastOffset) ? view.forecastOffset : null; state.sort = view.sort || 'urgency'; render(); };
     if (view.id !== 'all') button.ondblclick = () => removeView(view.id); els.chips.append(button);
   });
 }
@@ -517,7 +522,7 @@ els.clear.onclick = () => { state.query = ''; state.activeView = 'all'; render()
 els.doneFilter.onclick = () => { state.hideDone = !state.hideDone; state.activeView = 'custom'; render(); };
 els.safeDays.oninput = event => { state.maxSafeDays = event.target.value; state.activeView = 'custom'; render(); };
 els.sort.onchange = event => { state.sort = event.target.value; render(); };
-$('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; state.maxSafeDays = ''; state.sort = 'urgency'; render(); };
+$('#reset-filters').onclick = () => { state.query = ''; state.hideDone = false; state.maxSafeDays = ''; state.forecastOffset = null; state.sort = 'urgency'; render(); };
 async function copyAccountabilityExport(button, messageFactory, emptyMessage) {
   const originalText = button.querySelector('strong').textContent;
   button.disabled = true; button.querySelector('strong').textContent = 'Preparing…';
@@ -558,7 +563,7 @@ $('#empty-connect').onclick = () => els.settingsDialog.showModal();
 $('#auth-gate-button').onclick = () => els.settingsDialog.showModal();
 $('#save-view-button').onclick = () => els.saveDialog.showModal();
 document.querySelectorAll('[data-filter]').forEach(button => button.onclick = () => addFilter(button.dataset.filter));
-$('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone, maxSafeDays: state.maxSafeDays, sort: state.sort }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };
+$('#save-view-form').onsubmit = event => { if (event.submitter.value === 'cancel') return; const name = $('#view-name').value.trim(); if (!name) return; event.preventDefault(); const view = { id: Date.now().toString(), name, query: state.query, hideDone: state.hideDone, maxSafeDays: state.maxSafeDays, forecastOffset: state.forecastOffset, sort: state.sort }; state.views.push(view); state.activeView = view.id; localStorage.setItem('bee-views', JSON.stringify(state.views)); els.saveDialog.close(); $('#view-name').value = ''; render(); toast('View saved'); };
 $('#edit-goal-form').onsubmit = async event => { event.preventDefault(); const button = $('#save-goal-button'); button.disabled = true; button.textContent = 'Saving…'; try { await saveGoalTitle(); els.editDialog.close(); toast('Commitment saved to Beeminder'); } catch (error) { toast(error.message); } finally { button.disabled = false; button.textContent = 'Save commitment to Beeminder'; } };
 $('#calendar-form').onsubmit = event => {
   event.preventDefault();
