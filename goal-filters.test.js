@@ -17,5 +17,10 @@ assert.ok(compareMinutesPerUnit(unset, slow, 'desc') > 0);
 const projectedGoal = { slug: 'weekly', rate: 1, runits: 'w', safebuf: 2, quantum: 1, datapoints: [] };
 assert.equal(require('./goal-filters.js').projectedOnDay(projectedGoal, 2, '20260829', projectedDeadlineOffsets), true);
 assert.equal(require('./goal-filters.js').projectedOnDay(projectedGoal, 1, '20260829', projectedDeadlineOffsets), false);
+const selectedDays = require('./goal-filters.js').projectedOnSelectedDays;
+assert.equal(selectedDays(projectedGoal, [1, 2], '20260829', projectedDeadlineOffsets), true);
+assert.equal(selectedDays(projectedGoal, [1, 3], '20260829', projectedDeadlineOffsets), false);
+assert.equal(selectedDays({ ...projectedGoal, doneToday: true }, [0], '20260829', projectedDeadlineOffsets), true);
+assert.equal(selectedDays({ ...projectedGoal, doneToday: true }, [1], '20260829', projectedDeadlineOffsets), false);
 
 console.log('goal filter tests passed');

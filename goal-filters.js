@@ -25,5 +25,12 @@
     return projectOffsets(goal, dayOffset, today).has(dayOffset);
   }
 
-  return { safeDaysAtMost, compareMinutesPerUnit, projectedOnDay };
+  function projectedOnSelectedDays(goal, offsets, today, projectOffsets) {
+    const selected = Array.isArray(offsets) ? offsets.filter(Number.isInteger) : [];
+    if (!selected.length) return true;
+    if (selected.includes(0) && goal.doneToday) return true;
+    return selected.some(offset => projectedOnDay(goal, offset, today, projectOffsets));
+  }
+
+  return { safeDaysAtMost, compareMinutesPerUnit, projectedOnDay, projectedOnSelectedDays };
 }));
