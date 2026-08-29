@@ -100,5 +100,19 @@
     return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hr`;
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration };
+  function remainingWorkdaySeconds(now = new Date(), timeZone, endHour = 21) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+    }).formatToParts(now).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
+    const elapsed = Number(parts.hour) * 3600 + Number(parts.minute) * 60 + Number(parts.second);
+    return Math.max(0, endHour * 3600 - elapsed);
+  }
+
+  function formatCountdown(seconds) {
+    const value = Math.max(0, Math.floor(Number(seconds) || 0));
+    const hours = Math.floor(value / 3600), minutes = Math.floor(value % 3600 / 60), remainder = value % 60;
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+  }
+
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown };
 }));

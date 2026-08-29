@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=55" />
+  <link rel="stylesheet" href="styles.css?v=56" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -48,6 +48,11 @@
           <strong id="penalty-total">$0</strong>
           <small>Lifetime total</small>
         </button>
+        <div class="summary-static" title="Time remaining before the 9 PM end of the workday">
+          <span>Workday remaining</span>
+          <strong id="workday-countdown">0:00:00</strong>
+          <small>Until 9 PM</small>
+        </div>
       </section>
       <section class="workload-forecast" aria-labelledby="workload-forecast-title">
         <h2 id="workload-forecast-title">Predicted workload · select one or more days</h2>
@@ -92,7 +97,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.55</span>
+        <span id="version-label">Version 1.0.56</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -218,7 +223,7 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="projection.js?v=48"></script>
   <script src="goal-stats.js?v=20"></script>
-  <script src="dashboard-summary.js?v=49"></script>
+  <script src="dashboard-summary.js?v=56"></script>
   <script src="goal-metadata.js?v=28"></script>
   <script src="goal-search.js?v=30"></script>
   <script src="goal-filters.js?v=50"></script>
@@ -226,6 +231,6 @@
   <script src="workload-history.js?v=55"></script>
   <script src="google-calendar.js?v=40"></script>
   <script src="accountability.js?v=53"></script>
-  <script src="app.js?v=55"></script>
+  <script src="app.js?v=56"></script>
 </body>
 </html>

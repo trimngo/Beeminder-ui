@@ -43,5 +43,10 @@ assert.equal(summary.totalPenalties(goals, points => points.filter(point => poin
 assert.equal(summary.formatDuration(45), '45 min');
 assert.match(summary.formatDuration(90), /^1[.,]5 hr$/);
 assert.equal(summary.formatDuration(0), '0 min');
+assert.equal(summary.remainingWorkdaySeconds(new Date('2026-08-29T20:00:00Z'), 'UTC'), 3600);
+assert.equal(summary.remainingWorkdaySeconds(new Date('2026-08-29T22:00:00Z'), 'UTC'), 0);
+assert.equal(summary.remainingWorkdaySeconds(new Date('2026-08-29T23:00:00Z'), 'America/New_York'), 7200);
+assert.equal(summary.formatCountdown(3671), '1:01:11');
+assert.equal(summary.formatCountdown(0), '0:00:00');
 
 console.log('dashboard summary tests passed');

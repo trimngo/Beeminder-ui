@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.55';
+const APP_VERSION = '1.0.56';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -278,7 +278,14 @@ function renderDashboardSummary(filtered = filteredGoals()) {
   $('#filtered-time-total').textContent = BeeDashboardSummary.formatDuration(filteredMinutes);
   $('#filtered-time-note').textContent = `${filtered.length} displayed${filteredMissing ? ` · ${filteredMissing} missing time` : ''}`;
   $('#penalty-total').textContent = `$${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(paid)}`;
+  renderWorkdayCountdown();
   renderWorkloadForecast();
+}
+function renderWorkdayCountdown() {
+  const value = $('#workday-countdown'); if (!value) return;
+  const seconds = BeeDashboardSummary.remainingWorkdaySeconds(new Date(), state.timeZone, 21);
+  value.textContent = BeeDashboardSummary.formatCountdown(seconds);
+  value.closest('.summary-static').classList.toggle('ended', seconds === 0);
 }
 function forecastDayLabel(daystamp, offset) {
   if (offset === 0) return 'Today';
@@ -732,6 +739,8 @@ window.addEventListener('online', () => refreshGoals().catch(() => {}));
 setInterval(() => {
   if (document.visibilityState === 'visible') refreshGoals().catch(() => {});
 }, AUTO_REFRESH_INTERVAL_MS);
+renderWorkdayCountdown();
+setInterval(() => { if (document.visibilityState === 'visible') renderWorkdayCountdown(); }, 1000);
 if (IS_LOCAL_TEST && TEST_PARAMS.get('tooltip') === '1') {
   const goal = state.goals.find(item => item.datapoints.length);
   if (goal) showDatapointTooltip(goal, goal.datapoints[0].daystamp, goal.datapoints.filter(point => point.daystamp === goal.datapoints[0].daystamp));
