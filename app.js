@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.53';
+const APP_VERSION = '1.0.54';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -351,21 +351,45 @@ function statsDayLabel(daystamp) {
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))));
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
 }
+function statsWeekday(daystamp) {
+  const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))));
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short', timeZone: 'UTC' }).format(date);
+}
 function renderStats(focusToday = false) {
   const host = $('#workload-chart'); if (!host) return;
   const today = todayDaystamp(state.timeZone);
   const series = BeeWorkloadHistory.workloadSeries(state.goals, today, 7, BeeProjection.projectedWorkloadDeadlineOffsets);
-  const maximum = Math.max(1, ...series.map(item => Math.max(item.actual, item.predicted)));
+  const maximum = Math.max(1, ...series.map(item => Math.max(item.actual, item.predicted, item.upper || 0)));
   host.innerHTML = ''; host.style.setProperty('--history-days', series.length);
+  const yAxis = $('#workload-y-axis'); yAxis.innerHTML = '';
+  [1, .75, .5, .25, 0].forEach(fraction => { const tick = document.createElement('span'); tick.textContent = BeeDashboardSummary.formatCompactDuration(maximum * fraction); yAxis.append(tick); });
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.classList.add('workload-lines');
+  svg.setAttribute('viewBox', `0 0 ${series.length * 22} 220`); svg.setAttribute('preserveAspectRatio', 'none');
+  const points = key => series.map((item, index) => item[key] === null ? null : `${index * 22 + 11},${220 - item[key] / maximum * 220}`);
+  ['upper', 'lower', 'mean'].forEach(key => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    line.setAttribute('points', points(key).filter(Boolean).join(' ')); line.classList.add(key); svg.append(line);
+  });
+  host.append(svg);
+  const detail = $('#workload-detail');
   series.forEach(item => {
-    const column = document.createElement('div'); column.className = `workload-day${item.today ? ' today' : ''}`;
+    const weekday = statsWeekday(item.daystamp), weekend = ['Sat', 'Sun'].includes(weekday);
+    const column = document.createElement('div'); column.className = `workload-day${item.today ? ' today' : ''}${weekend ? ' weekend' : ''}`;
     column.dataset.daystamp = item.daystamp;
-    const amount = item.actual || item.predicted, bar = document.createElement('div');
+    const amount = item.actual || item.predicted, bar = document.createElement('button'); bar.type = 'button';
     bar.className = `workload-bar ${item.predicted ? 'predicted' : 'actual'}`;
     bar.style.setProperty('--workload-height', `${amount / maximum * 100}%`);
     bar.title = `${statsDayLabel(item.daystamp)}: ${BeeDashboardSummary.formatDuration(amount)} ${item.predicted ? 'predicted' : 'recorded'}`;
+    item.components.forEach((component, index) => {
+      const segment = document.createElement('i'); segment.style.cssText = `--segment-share:${amount ? component.minutes / amount * 100 : 0}%;--segment-hue:${(index * 67 + 145) % 360}`; segment.title = `${component.slug}: ${BeeDashboardSummary.formatDuration(component.minutes)}`; bar.append(segment);
+    });
+    bar.onclick = () => {
+      detail.innerHTML = ''; const heading = document.createElement('strong'); heading.textContent = `${weekday}, ${statsDayLabel(item.daystamp)} · ${BeeDashboardSummary.formatDuration(amount)}`; detail.append(heading);
+      if (!item.components.length) { const empty = document.createElement('span'); empty.textContent = 'No configured workload.'; detail.append(empty); }
+      item.components.slice().sort((a, b) => b.minutes - a.minutes).forEach(component => { const row = document.createElement('span'); row.textContent = `${component.slug} · ${BeeDashboardSummary.formatDuration(component.minutes)}`; detail.append(row); });
+    };
     const value = document.createElement('strong'); value.textContent = BeeDashboardSummary.formatCompactDuration(amount);
-    const label = document.createElement('span'); label.textContent = statsDayLabel(item.daystamp);
+    const label = document.createElement('span'); label.textContent = `${weekday} ${statsDayLabel(item.daystamp)}`;
     column.append(value, bar, label); host.append(column);
   });
   if (focusToday) requestAnimationFrame(() => host.querySelector('.today')?.scrollIntoView({ inline: 'center', block: 'nearest' }));
