@@ -48,10 +48,44 @@
     if (!Number.isFinite(rate)) return dailyRate(goal);
     return dailyRate({ rate, runits: goal.runits });
   }
+  function roadValue(goal, daystamp) {
+    const rows = (Array.isArray(goal.fullroad) ? goal.fullroad : [])
+      .filter(row => Array.isArray(row) && Number.isFinite(Number(row[0])) && Number.isFinite(Number(row[1])))
+      .sort((a, b) => Number(a[0]) - Number(b[0]));
+    if (!rows.length || !/^\d{8}$/.test(daystamp || '')) return null;
+    const timestamp = Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))) / 1000;
+    if (timestamp <= Number(rows[0][0])) return Number(rows[0][1]);
+    for (let index = 1; index < rows.length; index += 1) {
+      const previous = rows[index - 1], next = rows[index];
+      if (timestamp <= Number(next[0])) {
+        const span = Number(next[0]) - Number(previous[0]);
+        const fraction = span > 0 ? (timestamp - Number(previous[0])) / span : 1;
+        return Number(previous[1]) + fraction * (Number(next[1]) - Number(previous[1]));
+      }
+    }
+    const last = rows[rows.length - 1];
+    return Number(last[1]) + Math.max(0, (timestamp - Number(last[0])) / 86400) * roadDailyRate(goal, daystamp);
+  }
   function projectedRoadDeadlineOffsets(goal, horizon, today, action = 1) {
     const first = Math.max(0, Math.floor(Number(goal.safebuf) || 0));
     const offsets = [first];
     if (!(dailyRate(goal) > 0) || !/^\d{8}$/.test(today || '')) return new Set(offsets);
+    const current = Number(goal.curval);
+    if (Number.isFinite(current) && Number(goal.yaw ?? 1) > 0 && roadValue(goal, today) !== null) {
+      // Simulate doing the configured one-unit session on the first mandatory
+      // day, then only schedule another session when the road catches the
+      // simulated value. This mirrors the safety gained by doing today's work
+      // instead of blindly repeating at the headline rate tomorrow.
+      let simulatedValue = current + action;
+      for (let offset = first + 1; offset <= horizon; offset += 1) {
+        const threshold = roadValue(goal, shiftDaystamp(today, offset));
+        if (threshold !== null && simulatedValue + Number.EPSILON < threshold) {
+          offsets.push(offset);
+          while (simulatedValue + Number.EPSILON < threshold) simulatedValue += action;
+        }
+      }
+      return new Set(offsets);
+    }
     let required = 0, nextAction = action;
     for (let offset = first + 1; offset <= horizon; offset += 1) {
       required += Math.max(0, roadDailyRate(goal, shiftDaystamp(today, offset)));
@@ -70,5 +104,5 @@
     // quantum is datapoint precision (often 0.01), not a normal work session.
     return projectedRoadDeadlineOffsets(goal, horizon, today, 1);
   }
-  return { dailyRate, estimatedActionValue, roadDailyRate, projectedDeadlineOffsets, projectedRoadDeadlineOffsets, projectedWorkloadDeadlineOffsets };
+  return { dailyRate, estimatedActionValue, roadDailyRate, roadValue, projectedDeadlineOffsets, projectedRoadDeadlineOffsets, projectedWorkloadDeadlineOffsets };
 }));

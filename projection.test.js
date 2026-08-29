@@ -22,4 +22,10 @@ assert.deepEqual([...projectedWorkloadDeadlineOffsets(goal(7, 'w', [], {
   safebuf: 2,
   fullroad: [[timestamp(24), 0, 7], [timestamp(31), 0, 3.5]]
 }), 8, today)], [2, 4, 6, 8]);
+assert.deepEqual([...projectedWorkloadDeadlineOffsets(goal(5, 'w', [], {
+  safebuf: 0,
+  curval: 10,
+  yaw: 1,
+  fullroad: [[timestamp(22), 10.2, 5], [timestamp(29), 15.2, 5]]
+}), 3, today)], [0, 2, 3]);
 console.log('projection tests passed');
