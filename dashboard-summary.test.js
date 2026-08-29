@@ -52,5 +52,7 @@ assert.equal(summary.workdayCountdownStatus(7201, 60), 'safe');
 assert.equal(summary.workdayCountdownStatus(7200, 60), 'warning');
 assert.equal(summary.workdayCountdownStatus(3600, 60), 'danger');
 assert.equal(summary.workdayCountdownStatus(0, 60), 'expired');
+assert.deepEqual(summary.workdayProgress(6.5 * 3600, 60), { remainingPercent: 50, requiredPercent: 100 / 13, warningPercent: 200 / 13 });
+assert.deepEqual(summary.workdayProgress(99 * 3600, 99 * 60), { remainingPercent: 100, requiredPercent: 100, warningPercent: 100 });
 
 console.log('dashboard summary tests passed');

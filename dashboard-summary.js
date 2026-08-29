@@ -123,5 +123,16 @@
     return 'safe';
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown, workdayCountdownStatus };
+  function workdayProgress(seconds, workloadMinutes, startHour = 8, endHour = 21) {
+    const total = Math.max(1, (endHour - startHour) * 3600);
+    const remaining = Math.max(0, Math.min(total, Number(seconds) || 0));
+    const required = Math.max(0, Math.min(total, (Number(workloadMinutes) || 0) * 60));
+    return {
+      remainingPercent: remaining / total * 100,
+      requiredPercent: required / total * 100,
+      warningPercent: Math.min(total, required + 3600) / total * 100
+    };
+  }
+
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown, workdayCountdownStatus, workdayProgress };
 }));
