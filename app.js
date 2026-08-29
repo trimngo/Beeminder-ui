@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.58';
+const APP_VERSION = '1.0.59';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -290,8 +290,17 @@ function renderWorkdayCountdown() {
   value.textContent = BeeDashboardSummary.formatCountdown(seconds);
   const row = $('#workday-countdown-row'); row.className = `workday-countdown-row ${status}`;
   row.style.setProperty('--remaining-percent', `${progress.remainingPercent}%`);
+  row.style.setProperty('--elapsed-percent', `${progress.elapsedPercent}%`);
   row.style.setProperty('--required-percent', `${progress.requiredPercent}%`);
+  row.style.setProperty('--danger-percent', `${progress.dangerPercent}%`);
   row.style.setProperty('--warning-percent', `${progress.warningPercent}%`);
+  const segments = $('#workday-segments'); segments.innerHTML = '';
+  const workload = BeeDashboardSummary.workloadBreakdown(state.goals, true);
+  const workloadTotal = workload.reduce((sum, item) => sum + item.value, 0);
+  workload.forEach(item => {
+    const segment = document.createElement('i'); segment.style.cssText = `--segment-share:${workloadTotal ? item.value / workloadTotal * 100 : 0}%;--segment-hue:${BeeWorkloadHistory.goalHue(item.slug)}`;
+    segment.title = `${item.slug}: ${BeeDashboardSummary.formatDuration(item.value)}`; segments.append(segment);
+  });
   const slackMinutes = (seconds - workloadMinutes * 60) / 60;
   $('#workday-slack').textContent = seconds === 0 ? 'Workday ended' : slackMinutes >= 0
     ? `${BeeDashboardSummary.formatDuration(slackMinutes)} beyond today’s minimum`

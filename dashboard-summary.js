@@ -118,8 +118,9 @@
     const remaining = Math.max(0, Number(seconds) || 0);
     const workload = Math.max(0, Number(workloadMinutes) || 0) * 60;
     if (remaining === 0) return 'expired';
-    if (remaining <= workload) return 'danger';
-    if (remaining <= workload + 3600) return 'warning';
+    if (remaining <= workload) return 'critical';
+    if (remaining <= workload + 3600) return 'danger';
+    if (remaining <= workload + 7200) return 'warning';
     return 'safe';
   }
 
@@ -129,8 +130,10 @@
     const required = Math.max(0, Math.min(total, (Number(workloadMinutes) || 0) * 60));
     return {
       remainingPercent: remaining / total * 100,
+      elapsedPercent: (total - remaining) / total * 100,
       requiredPercent: required / total * 100,
-      warningPercent: Math.min(total, required + 3600) / total * 100
+      dangerPercent: Math.min(total, required + 3600) / total * 100,
+      warningPercent: Math.min(total, required + 7200) / total * 100
     };
   }
 
