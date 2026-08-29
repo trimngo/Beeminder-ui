@@ -68,6 +68,17 @@
     return totals;
   }
 
+  function sevenDayCommitmentCounts(goals, today, projectOffsets, dayCount = 7) {
+    const counts = Array.from({ length: dayCount }, () => 0);
+    if (typeof projectOffsets !== 'function') return counts;
+    (Array.isArray(goals) ? goals : []).forEach(goal => {
+      projectOffsets(goal, dayCount - 1, today).forEach(offset => {
+        if (offset >= 0 && offset < dayCount && !(offset === 0 && goal.doneToday)) counts[offset] += 1;
+      });
+    });
+    return counts;
+  }
+
   function formatCompactDuration(minutes) {
     const value = Number(minutes);
     if (!Number.isFinite(value) || value <= 0) return '0m';
@@ -89,5 +100,5 @@
     return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hr`;
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, totalPenalties, formatDuration, formatCompactDuration };
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration };
 }));

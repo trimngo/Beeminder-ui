@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.48';
+const APP_VERSION = '1.0.49';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -135,7 +135,7 @@ function formatDailyRate(value) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
 }
 function projectedDeadlineOffsets(goal, horizon) {
-  return BeeProjection.projectedDeadlineOffsets(goal, horizon, todayDaystamp(state.timeZone));
+  return BeeProjection.projectedWorkloadDeadlineOffsets(goal, horizon, todayDaystamp(state.timeZone));
 }
 function urgency(goal) {
   if (goal.safebuf <= 0) return { color: '#ef5b4c', label: 'Due today' };
@@ -277,6 +277,7 @@ function forecastDayLabel(daystamp, offset) {
 function renderWorkloadForecast() {
   const host = $('#workload-forecast-days'), today = todayDaystamp(state.timeZone);
   const totals = BeeDashboardSummary.sevenDayWorkload(state.goals, today, BeeProjection.projectedWorkloadDeadlineOffsets);
+  const counts = BeeDashboardSummary.sevenDayCommitmentCounts(state.goals, today, BeeProjection.projectedWorkloadDeadlineOffsets);
   const maximum = Math.max(...totals, 1); host.innerHTML = '';
   totals.forEach((minutes, offset) => {
     const daystamp = shiftDaystamp(today, offset), item = document.createElement('button'); item.type = 'button'; item.className = 'forecast-day';
@@ -284,10 +285,11 @@ function renderWorkloadForecast() {
     item.classList.toggle('active', state.forecastOffset === offset); item.setAttribute('aria-pressed', String(state.forecastOffset === offset));
     const label = document.createElement('span'); label.textContent = forecastDayLabel(daystamp, offset);
     const value = document.createElement('strong'); value.textContent = BeeDashboardSummary.formatCompactDuration(minutes);
+    const count = document.createElement('small'); count.textContent = `${counts[offset]} item${counts[offset] === 1 ? '' : 's'}`;
     item.title = `${forecastDayLabel(daystamp, offset)}: ${BeeDashboardSummary.formatDuration(minutes)} predicted`;
     item.setAttribute('aria-label', `${item.title}; filter commitments for this day`);
     item.onclick = () => { state.forecastOffset = state.forecastOffset === offset ? null : offset; state.activeView = 'custom'; render(); };
-    item.append(label, value); host.append(item);
+    item.append(label, value, count); host.append(item);
   });
 }
 function renderBreakdownChart(host, { id, title, items, formatter }) {
@@ -348,6 +350,7 @@ function renderTimeline() {
   }
   $('#future-days').value = String(state.futureDays);
   const goals = state.goals, today = todayDaystamp(state.timeZone), offsets = Array.from({ length: state.futureDays + 15 }, (_, index) => state.futureDays - index);
+  const projectedBySlug = new Map(goals.map(goal => [goal.slug, BeeProjection.projectedWorkloadDeadlineOffsets(goal, state.futureDays, today)]));
   const grid = document.createElement('div'); grid.className = 'history-grid'; grid.style.setProperty('--goal-count', Math.max(goals.length, 1));
   const corner = document.createElement('div'); corner.className = 'history-corner'; corner.textContent = 'Day'; grid.append(corner);
   goals.forEach(goal => { const cell = document.createElement('div'); cell.className = 'history-goal'; cell.title = goal.slug; const label = document.createElement('span'); label.textContent = goal.slug; cell.append(label); grid.append(cell); });
@@ -356,7 +359,7 @@ function renderTimeline() {
     goals.forEach(goal => {
       const cell = document.createElement('div'); cell.className = `history-cell${offset === 0 ? ' today' : ''}`;
       const dayData = goal.datapoints.filter(point => point.daystamp === daystamp), hasData = dayData.length > 0;
-      const projectedDeadlines = projectedDeadlineOffsets(goal, state.futureDays);
+      const projectedDeadlines = projectedBySlug.get(goal.slug);
       if (hasData) { const derailed = dayData.some(isDerailDatapoint), mark = document.createElement('button'); mark.type = 'button'; mark.className = `cell-mark ${derailed ? 'derail' : 'history'}`; mark.textContent = derailed ? '×' : ''; mark.setAttribute('aria-label', `${goal.slug}: ${derailed ? 'derailment' : `show ${dayData.length} data ${dayData.length === 1 ? 'entry' : 'entries'}`}`); mark.onclick = () => showDatapointTooltip(goal, daystamp, dayData); cell.append(mark); }
       else if (offset >= 0 && projectedDeadlines.has(offset)) { const mark = document.createElement('span'); mark.className = `cell-mark due${offset <= 1 ? ' urgent' : ''}`; mark.title = `${goal.slug}: projected minimum-action deadline`; cell.append(mark); }
       grid.append(cell);

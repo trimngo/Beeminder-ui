@@ -29,6 +29,7 @@ const forecastGoals = [
   { rate: 1, runits: 'd', safebuf: 0, minutesPerUnit: 10, quantum: 1, doneToday: true, datapoints: [] }
 ];
 assert.deepEqual(summary.sevenDayWorkload(forecastGoals, '20260829', projection.projectedWorkloadDeadlineOffsets), [20, 30, 60, 30, 30, 30, 30]);
+assert.deepEqual(summary.sevenDayCommitmentCounts(forecastGoals, '20260829', projection.projectedWorkloadDeadlineOffsets), [1, 2, 3, 2, 2, 2, 2]);
 const stableForecastGoal = { rate: 2, runits: 'w', safebuf: 1, minutesPerUnit: 15, quantum: 1, doneToday: false, datapoints: [] };
 const beforeEntry = summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedWorkloadDeadlineOffsets);
 stableForecastGoal.datapoints.push({ daystamp: '20260829', value: 20 });
