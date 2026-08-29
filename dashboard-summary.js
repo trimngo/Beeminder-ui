@@ -52,13 +52,17 @@
     })).filter(item => item.value > 0).sort((a, b) => b.value - a.value || a.slug.localeCompare(b.slug));
   }
 
-  function sevenDayWorkload(goals, today, projectOffsets, actionValue, dayCount = 7) {
+  function sevenDayWorkload(goals, today, projectOffsets, dayCount = 7) {
     const totals = Array.from({ length: dayCount }, () => 0);
-    if (typeof projectOffsets !== 'function' || typeof actionValue !== 'function') return totals;
+    if (typeof projectOffsets !== 'function') return totals;
     (Array.isArray(goals) ? goals : []).forEach(goal => {
       const minutes = Number(goal.minutesPerUnit);
       if (!Number.isFinite(minutes) || minutes <= 0) return;
-      const action = Math.abs(Number(actionValue(goal, today)));
+      // A workload unit has to remain stable when a datapoint is added. Recent
+      // datapoint values describe past behavior, not the size of the next
+      // minimum action, so use Beeminder's quantum for both cadence and time.
+      const quantum = Math.abs(Number(goal.quantum));
+      const action = Number.isFinite(quantum) && quantum > 0 ? quantum : 1;
       if (!Number.isFinite(action) || action <= 0) return;
       projectOffsets(goal, dayCount - 1, today).forEach(offset => {
         if (offset >= 0 && offset < dayCount && !(offset === 0 && goal.doneToday)) totals[offset] += minutes * action;

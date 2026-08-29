@@ -23,12 +23,11 @@
     const quantum = Math.abs(Number(goal.quantum));
     return Number.isFinite(quantum) && quantum > 0 ? quantum : 1;
   }
-  function projectedDeadlineOffsets(goal, horizon, today) {
+  function projectedDeadlineOffsetsForAction(goal, horizon, action) {
     const first = Math.max(0, Math.floor(Number(goal.safebuf) || 0));
     const offsets = [first], target = dailyRate(goal);
     // Recurring do-less projections require a different model.
     if (!(target > 0)) return new Set(offsets);
-    const action = estimatedActionValue(goal, today);
     let previous = first;
     for (let actionNumber = 1; ; actionNumber += 1) {
       // Preserve the fractional cadence: five one-unit actions then naturally
@@ -40,5 +39,12 @@
     }
     return new Set(offsets);
   }
-  return { dailyRate, estimatedActionValue, projectedDeadlineOffsets };
+  function projectedDeadlineOffsets(goal, horizon, today) {
+    return projectedDeadlineOffsetsForAction(goal, horizon, estimatedActionValue(goal, today));
+  }
+  function projectedQuantumDeadlineOffsets(goal, horizon) {
+    const quantum = Math.abs(Number(goal.quantum));
+    return projectedDeadlineOffsetsForAction(goal, horizon, Number.isFinite(quantum) && quantum > 0 ? quantum : 1);
+  }
+  return { dailyRate, estimatedActionValue, projectedDeadlineOffsets, projectedQuantumDeadlineOffsets };
 }));

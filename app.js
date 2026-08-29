@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.43';
+const APP_VERSION = '1.0.44';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -151,7 +151,7 @@ function filteredGoals() {
   return state.goals
     .filter(goal => !state.hideDone || !goal.doneToday)
     .filter(goal => BeeGoalFilters.safeDaysAtMost(goal, state.maxSafeDays))
-    .filter(goal => state.forecastOffset === null || BeeGoalFilters.projectedOnDay(goal, state.forecastOffset, today, BeeProjection.projectedDeadlineOffsets))
+    .filter(goal => state.forecastOffset === null || BeeGoalFilters.projectedOnDay(goal, state.forecastOffset, today, BeeProjection.projectedQuantumDeadlineOffsets))
     .filter(matchesQuery)
     .sort((a, b) => {
       if (state.sort === 'time-asc') return BeeGoalFilters.compareMinutesPerUnit(a, b, 'asc');
@@ -276,7 +276,7 @@ function forecastDayLabel(daystamp, offset) {
 }
 function renderWorkloadForecast() {
   const host = $('#workload-forecast-days'), today = todayDaystamp(state.timeZone);
-  const totals = BeeDashboardSummary.sevenDayWorkload(state.goals, today, BeeProjection.projectedDeadlineOffsets, BeeProjection.estimatedActionValue);
+  const totals = BeeDashboardSummary.sevenDayWorkload(state.goals, today, BeeProjection.projectedQuantumDeadlineOffsets);
   const maximum = Math.max(...totals, 1); host.innerHTML = '';
   totals.forEach((minutes, offset) => {
     const daystamp = shiftDaystamp(today, offset), item = document.createElement('button'); item.type = 'button'; item.className = 'forecast-day';
