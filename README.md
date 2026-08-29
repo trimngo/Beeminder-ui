@@ -12,7 +12,7 @@ Each commitment starts with its Beeminder slug and description. Its status repor
 
 Description lines written as Markdown checklist items, such as `- [ ] Draft` or `- [x] Review`, appear as checkboxes directly on the commitment card. Their checked state is stored immediately on the current device and survives reloads or switching away from the app without changing the Beeminder description. Editing the checklist description resets all its saved checks, and a successful datapoint submission clears the checks for that commitment.
 
-Commitments with configured minutes per unit have a calendar action that prepares a timed Google Calendar event. Choose its date, start time, and duration in Bee Today, then review and save it in Google Calendar. This uses a normal event-template link: Bee Today receives no calendar access and cannot read, update, confirm, or delete calendar events.
+Commitments with configured minutes per unit have a calendar action that prepares a timed Google Calendar event. The goal slug becomes the event title, while the full visible commitment description is placed in the event description. Choose its date, start time, and duration in Bee Today, then review and save it in Google Calendar. This uses a normal event-template link: Bee Today receives no calendar access and cannot read, update, confirm, or delete calendar events.
 
 Calendar scheduling assumes working hours from 8:00 AM through 9:00 PM in the Beeminder account’s timezone. During working hours, the dialog proposes the next quarter-hour. Before 8:00 AM it proposes 8:00 AM that day, and when the next available time would be 9:00 PM or later it proposes 8:00 AM the following day.
 
