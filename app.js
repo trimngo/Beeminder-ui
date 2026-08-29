@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.46';
+const APP_VERSION = '1.0.47';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -27,7 +27,7 @@ function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '')
 function normalizeGoal(goal) {
   // Migrate goals cached by older releases, where fine print was stored as `description`.
   const parsed = BeeGoalMetadata.parse(cleanText(goal.rawTitle || goal.title || goal.slug));
-  return { ...goal, rawTitle: parsed.rawTitle, title: parsed.title, minutesPerUnit: parsed.minutes, metadataTags: parsed.tags, hasMetadata: parsed.hasMetadata, fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), kyoom: goal.kyoom !== false, aggday: goal.aggday || 'sum', datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
+  return { ...goal, rawTitle: parsed.rawTitle, title: parsed.title, minutesPerUnit: parsed.minutes, metadataTags: parsed.tags, hasMetadata: parsed.hasMetadata, fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), kyoom: goal.kyoom !== false, aggday: goal.aggday || 'sum', fullroad: Array.isArray(goal.fullroad) ? goal.fullroad : [], datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
 }
 function loadLocalGoals() {
   if (IS_LOCAL_TEST && TEST_PARAMS.get('sample') === '1') {
@@ -151,7 +151,7 @@ function filteredGoals() {
   return state.goals
     .filter(goal => !state.hideDone || !goal.doneToday)
     .filter(goal => BeeGoalFilters.safeDaysAtMost(goal, state.maxSafeDays))
-    .filter(goal => state.forecastOffset === null || BeeGoalFilters.projectedOnDay(goal, state.forecastOffset, today, BeeProjection.projectedQuantumDeadlineOffsets))
+    .filter(goal => state.forecastOffset === null || BeeGoalFilters.projectedOnDay(goal, state.forecastOffset, today, BeeProjection.projectedWorkloadDeadlineOffsets))
     .filter(matchesQuery)
     .sort((a, b) => {
       if (state.sort === 'time-asc') return BeeGoalFilters.compareMinutesPerUnit(a, b, 'asc');
@@ -276,7 +276,7 @@ function forecastDayLabel(daystamp, offset) {
 }
 function renderWorkloadForecast() {
   const host = $('#workload-forecast-days'), today = todayDaystamp(state.timeZone);
-  const totals = BeeDashboardSummary.sevenDayWorkload(state.goals, today, BeeProjection.projectedQuantumDeadlineOffsets);
+  const totals = BeeDashboardSummary.sevenDayWorkload(state.goals, today, BeeProjection.projectedWorkloadDeadlineOffsets);
   const maximum = Math.max(...totals, 1); host.innerHTML = '';
   totals.forEach((minutes, offset) => {
     const daystamp = shiftDaystamp(today, offset), item = document.createElement('button'); item.type = 'button'; item.className = 'forecast-day';
@@ -463,13 +463,14 @@ async function refreshSubmittedGoal(slug, datapoint) {
   const user = localStorage.getItem('bee-user'), token = localStorage.getItem('bee-token');
   const goal = state.goals.find(item => item.slug === slug);
   if (!user || !token || !goal) throw new Error('Could not refresh the completed commitment');
-  const params = new URLSearchParams({ auth_token: token, _: String(Date.now()) });
+  const params = new URLSearchParams({ auth_token: token, datapoints: 'true', _: String(Date.now()) });
   const response = await fetch(`https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}/goals/${encodeURIComponent(slug)}.json?${params}`, { cache: 'no-store' });
   if (!response.ok) throw new Error(`Could not refresh safety days (${response.status})`);
   const updated = await response.json();
-  const datapoints = goal.datapoints.some(point => point.id && point.id === datapoint?.id)
-    ? goal.datapoints
-    : [datapoint, ...goal.datapoints].filter(Boolean);
+  const datapoints = Array.isArray(updated.datapoints) ? updated.datapoints
+    : goal.datapoints.some(point => point.id && point.id === datapoint?.id)
+      ? goal.datapoints
+      : [datapoint, ...goal.datapoints].filter(Boolean);
   Object.assign(goal, normalizeGoal({
     ...goal,
     rawTitle: updated.title || goal.rawTitle,
@@ -478,6 +479,7 @@ async function refreshSubmittedGoal(slug, datapoint) {
     rate: updated.rate ?? goal.rate,
     runits: updated.runits ?? goal.runits,
     quantum: updated.quantum ?? goal.quantum,
+    fullroad: updated.fullroad ?? goal.fullroad,
     datapoints,
     doneToday: true,
     updated: 0
@@ -499,8 +501,8 @@ async function refreshGoals({ announce = false } = {}) {
       const params = new URLSearchParams({
         auth_token: token,
         associations: 'true',
-        emaciated: 'true',
-        // All datapoints are required to count derail markers since the goal began.
+        // Keep fullroad so forecasts follow scheduled road changes. All
+        // datapoints are required to count derail markers since the goal began.
         _: String(Date.now())
       });
       const url = `https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}.json?${params}`;
@@ -513,7 +515,7 @@ async function refreshGoals({ announce = false } = {}) {
       state.goals = (data.goals || []).map(goal => normalizeGoal({
         slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '',
         safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99,
-        rate: goal.rate, runits: goal.runits, quantum: goal.quantum, kyoom: goal.kyoom, aggday: goal.aggday, pledge: goal.pledge,
+        rate: goal.rate, runits: goal.runits, quantum: goal.quantum, fullroad: goal.fullroad, kyoom: goal.kyoom, aggday: goal.aggday, pledge: goal.pledge,
         datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone),
         updated: Date.now() / 60000 - (goal.updated_at || 0) / 60
       }));

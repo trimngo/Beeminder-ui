@@ -28,13 +28,13 @@ const forecastGoals = [
   { rate: 1, runits: 'w', safebuf: 2, minutesPerUnit: 30, quantum: 1, doneToday: false, datapoints: [] },
   { rate: 1, runits: 'd', safebuf: 0, minutesPerUnit: 10, quantum: 1, doneToday: true, datapoints: [] }
 ];
-assert.deepEqual(summary.sevenDayWorkload(forecastGoals, '20260829', projection.projectedQuantumDeadlineOffsets), [20, 30, 60, 30, 30, 30, 30]);
+assert.deepEqual(summary.sevenDayWorkload(forecastGoals, '20260829', projection.projectedWorkloadDeadlineOffsets), [20, 30, 60, 30, 30, 30, 30]);
 const stableForecastGoal = { rate: 2, runits: 'w', safebuf: 1, minutesPerUnit: 15, quantum: 1, doneToday: false, datapoints: [] };
-const beforeEntry = summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedQuantumDeadlineOffsets);
+const beforeEntry = summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedWorkloadDeadlineOffsets);
 stableForecastGoal.datapoints.push({ daystamp: '20260829', value: 20 });
-assert.deepEqual(summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedQuantumDeadlineOffsets), beforeEntry);
+assert.deepEqual(summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedWorkloadDeadlineOffsets), beforeEntry);
 const preciseEmailGoal = { rate: 5, runits: 'w', safebuf: 2, minutesPerUnit: 10, quantum: 0.01, doneToday: false, datapoints: [] };
-assert.deepEqual(summary.sevenDayWorkload([preciseEmailGoal], '20260829', projection.projectedQuantumDeadlineOffsets), [0, 0, 10, 10, 10, 0, 10]);
+assert.deepEqual(summary.sevenDayWorkload([preciseEmailGoal], '20260829', projection.projectedWorkloadDeadlineOffsets), [0, 0, 10, 0, 10, 10, 0]);
 assert.equal(summary.formatCompactDuration(0), '0m');
 assert.equal(summary.formatCompactDuration(45), '45m');
 assert.match(summary.formatCompactDuration(90), /^1[.,]5h$/);

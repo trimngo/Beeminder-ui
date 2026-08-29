@@ -39,13 +39,36 @@
     }
     return new Set(offsets);
   }
+  function roadDailyRate(goal, daystamp) {
+    const rows = Array.isArray(goal.fullroad) ? goal.fullroad : [];
+    if (!rows.length || !/^\d{8}$/.test(daystamp || '')) return dailyRate(goal);
+    const timestamp = Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))) / 1000;
+    const row = rows.find(item => Array.isArray(item) && Number(item[0]) >= timestamp) || rows[rows.length - 1];
+    const rate = Number(row?.[2]);
+    if (!Number.isFinite(rate)) return dailyRate(goal);
+    return dailyRate({ rate, runits: goal.runits });
+  }
+  function projectedRoadDeadlineOffsets(goal, horizon, today, action = 1) {
+    const first = Math.max(0, Math.floor(Number(goal.safebuf) || 0));
+    const offsets = [first];
+    if (!(dailyRate(goal) > 0) || !/^\d{8}$/.test(today || '')) return new Set(offsets);
+    let required = 0, nextAction = action;
+    for (let offset = first + 1; offset <= horizon; offset += 1) {
+      required += Math.max(0, roadDailyRate(goal, shiftDaystamp(today, offset)));
+      if (required + Number.EPSILON >= nextAction) {
+        offsets.push(offset);
+        while (required + Number.EPSILON >= nextAction) nextAction += action;
+      }
+    }
+    return new Set(offsets);
+  }
   function projectedDeadlineOffsets(goal, horizon, today) {
     return projectedDeadlineOffsetsForAction(goal, horizon, estimatedActionValue(goal, today));
   }
-  function projectedQuantumDeadlineOffsets(goal, horizon) {
+  function projectedWorkloadDeadlineOffsets(goal, horizon, today) {
     // Workload metadata defines the time for an input of 1. Beeminder's
     // quantum is datapoint precision (often 0.01), not a normal work session.
-    return projectedDeadlineOffsetsForAction(goal, horizon, 1);
+    return projectedRoadDeadlineOffsets(goal, horizon, today, 1);
   }
-  return { dailyRate, estimatedActionValue, projectedDeadlineOffsets, projectedQuantumDeadlineOffsets };
+  return { dailyRate, estimatedActionValue, roadDailyRate, projectedDeadlineOffsets, projectedRoadDeadlineOffsets, projectedWorkloadDeadlineOffsets };
 }));
