@@ -17,6 +17,7 @@ assert.equal(estimatedActionValue(goal(5, 'w', [
   { daystamp: '20260820', value: 1 }, { daystamp: '20260819', value: 2 }, { daystamp: '20260818', value: 3 }
 ]), today), 2);
 assert.deepEqual([...projectedWorkloadDeadlineOffsets(goal(5, 'w', [], { safebuf: 2, quantum: 0.01 }), 6, today)], [2, 4, 5]);
+assert.deepEqual([...projectedWorkloadDeadlineOffsets(goal(4, 'd', [], { quantum: 0.01 }), 3, today)], [0, 1, 2, 3]);
 const timestamp = day => Date.UTC(2026, 7, day) / 1000;
 assert.deepEqual([...projectedWorkloadDeadlineOffsets(goal(7, 'w', [], {
   safebuf: 2,

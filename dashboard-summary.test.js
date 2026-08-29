@@ -10,16 +10,20 @@ const goals = [
   { safebuf: 0, doneToday: false, minutesPerUnit: null, quantum: 1, datapoints: [] }
 ];
 
-assert.equal(summary.estimatedMinutesToSafety(goals), 60);
+assert.equal(summary.estimatedMinutesToSafety(goals), 45);
 assert.equal(summary.goalsMissingTimeToSafety(goals), 1);
-assert.equal(summary.estimatedMinutesForGoals(goals), 210);
+assert.equal(summary.estimatedMinutesForGoals(goals), 195);
 assert.equal(summary.goalsMissingTime(goals), 1);
 assert.deepEqual(summary.workloadBreakdown(goals, true), [
-  { slug: '', value: 30 }, { slug: '', value: 30 }
+  { slug: '', value: 30 }, { slug: '', value: 15 }
 ]);
 assert.deepEqual(summary.workloadBreakdown(goals), [
-  { slug: '', value: 90 }, { slug: '', value: 60 }, { slug: '', value: 30 }, { slug: '', value: 30 }
+  { slug: '', value: 90 }, { slug: '', value: 60 }, { slug: '', value: 30 }, { slug: '', value: 15 }
 ]);
+const multiUnitGoal = { slug: 'teachprep', rate: 4, runits: 'd', safebuf: 0, doneToday: false, minutesPerUnit: 30, quantum: 0.01 };
+assert.equal(summary.estimatedMinutesToSafety([multiUnitGoal]), 120);
+assert.equal(summary.estimatedMinutesForGoals([multiUnitGoal]), 120);
+assert.deepEqual(summary.workloadBreakdown([multiUnitGoal], true), [{ slug: 'teachprep', value: 120 }]);
 assert.deepEqual(summary.penaltyBreakdown(goals, points => points.filter(point => point.derail || point.comment === '#DERAIL').length), [
   { slug: '', value: 5 }, { slug: '', value: 5 }
 ]);
@@ -30,6 +34,8 @@ const forecastGoals = [
 ];
 assert.deepEqual(summary.sevenDayWorkload(forecastGoals, '20260829', projection.projectedWorkloadDeadlineOffsets), [20, 30, 60, 30, 30, 30, 30]);
 assert.deepEqual(summary.sevenDayCommitmentCounts(forecastGoals, '20260829', projection.projectedWorkloadDeadlineOffsets), [1, 2, 3, 2, 2, 2, 2]);
+assert.deepEqual(summary.sevenDayWorkload([multiUnitGoal], '20260829', projection.projectedWorkloadDeadlineOffsets), [120, 120, 120, 120, 120, 120, 120]);
+assert.deepEqual(summary.sevenDayCommitmentCounts([multiUnitGoal], '20260829', projection.projectedWorkloadDeadlineOffsets), [1, 1, 1, 1, 1, 1, 1]);
 const stableForecastGoal = { rate: 2, runits: 'w', safebuf: 1, minutesPerUnit: 15, quantum: 1, doneToday: false, datapoints: [] };
 const beforeEntry = summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedWorkloadDeadlineOffsets);
 stableForecastGoal.datapoints.push({ daystamp: '20260829', value: 20 });

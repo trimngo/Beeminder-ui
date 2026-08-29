@@ -1,8 +1,9 @@
 (function (root, factory) {
-  const api = factory();
+  const units = typeof module === 'object' && module.exports ? require('./workload-units.js') : root.BeeWorkloadUnits;
+  const api = factory(units);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.BeeWorkloadHistory = api;
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (WorkloadUnits) {
   function shiftDaystamp(daystamp, days) {
     const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
     return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
@@ -42,7 +43,7 @@
       const minutes = Number(goal.minutesPerUnit);
       if (!(minutes > 0)) return;
       projectOffsets(goal, predicted.length, today).forEach(offset => {
-        if (offset > 0 && offset <= predicted.length) predicted[offset - 1].set(String(goal.slug || ''), minutes);
+        if (offset > 0 && offset <= predicted.length) predicted[offset - 1].set(String(goal.slug || ''), minutes * WorkloadUnits.unitsForWorkBlock(goal));
       });
     });
     predicted.forEach((itemsForDay, index) => {

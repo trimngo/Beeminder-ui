@@ -1,8 +1,9 @@
 (function exposeProjection(root, factory) {
-  const projection = factory();
+  const units = typeof module === 'object' && module.exports ? require('./workload-units.js') : root.BeeWorkloadUnits;
+  const projection = factory(units);
   if (typeof module === 'object' && module.exports) module.exports = projection;
   else root.BeeProjection = projection;
-}(typeof globalThis !== 'undefined' ? globalThis : this, () => {
+}(typeof globalThis !== 'undefined' ? globalThis : this, (WorkloadUnits) => {
   function shiftDaystamp(daystamp, days) {
     const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
     return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
@@ -72,8 +73,8 @@
     if (!(dailyRate(goal) > 0) || !/^\d{8}$/.test(today || '')) return new Set(offsets);
     const current = Number(goal.curval);
     if (Number.isFinite(current) && Number(goal.yaw ?? 1) > 0 && roadValue(goal, today) !== null) {
-      // Simulate doing the configured one-unit session on the first mandatory
-      // day, then only schedule another session when the road catches the
+      // Simulate doing the configured action-sized work block on the first
+      // mandatory day, then only schedule another block when the road catches the
       // simulated value. This mirrors the safety gained by doing today's work
       // instead of blindly repeating at the headline rate tomorrow.
       let simulatedValue = current + action;
@@ -102,7 +103,7 @@
   function projectedWorkloadDeadlineOffsets(goal, horizon, today) {
     // Workload metadata defines the time for an input of 1. Beeminder's
     // quantum is datapoint precision (often 0.01), not a normal work session.
-    return projectedRoadDeadlineOffsets(goal, horizon, today, 1);
+    return projectedRoadDeadlineOffsets(goal, horizon, today, WorkloadUnits.unitsForWorkBlock(goal));
   }
   return { dailyRate, estimatedActionValue, roadDailyRate, roadValue, projectedDeadlineOffsets, projectedRoadDeadlineOffsets, projectedWorkloadDeadlineOffsets };
 }));

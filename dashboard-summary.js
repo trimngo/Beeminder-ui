@@ -1,15 +1,15 @@
 (function (root, factory) {
-  const api = factory();
+  const units = typeof module === 'object' && module.exports ? require('./workload-units.js') : root.BeeWorkloadUnits;
+  const api = factory(units);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.BeeDashboardSummary = api;
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (WorkloadUnits) {
   function estimatedMinutesToSafety(goals) {
     return (Array.isArray(goals) ? goals : []).reduce((total, goal) => {
       if (goal.doneToday || Number(goal.safebuf) > 0) return total;
       const minutes = Number(goal.minutesPerUnit);
       if (!Number.isFinite(minutes) || minutes <= 0) return total;
-      const quantum = Math.abs(Number(goal.quantum));
-      return total + minutes * (Number.isFinite(quantum) && quantum > 0 ? quantum : 1);
+      return total + WorkloadUnits.minutesForWorkBlock(goal);
     }, 0);
   }
 
@@ -24,8 +24,7 @@
     return (Array.isArray(goals) ? goals : []).reduce((total, goal) => {
       const minutes = Number(goal.minutesPerUnit);
       if (!Number.isFinite(minutes) || minutes <= 0) return total;
-      const quantum = Math.abs(Number(goal.quantum));
-      return total + minutes * (Number.isFinite(quantum) && quantum > 0 ? quantum : 1);
+      return total + WorkloadUnits.minutesForWorkBlock(goal);
     }, 0);
   }
 
@@ -40,8 +39,7 @@
       if (dueOnly && (goal.doneToday || Number(goal.safebuf) > 0)) return [];
       const minutes = Number(goal.minutesPerUnit);
       if (!Number.isFinite(minutes) || minutes <= 0) return [];
-      const quantum = Math.abs(Number(goal.quantum));
-      return [{ slug: String(goal.slug || ''), value: minutes * (Number.isFinite(quantum) && quantum > 0 ? quantum : 1) }];
+      return [{ slug: String(goal.slug || ''), value: WorkloadUnits.minutesForWorkBlock(goal) }];
     }).filter(item => item.value > 0).sort((a, b) => b.value - a.value || a.slug.localeCompare(b.slug));
   }
 
@@ -58,9 +56,7 @@
     (Array.isArray(goals) ? goals : []).forEach(goal => {
       const minutes = Number(goal.minutesPerUnit);
       if (!Number.isFinite(minutes) || minutes <= 0) return;
-      // minutesPerUnit is the time for an input of 1. Quantum is datapoint
-      // precision and must not create extra tiny forecast actions.
-      const action = 1;
+      const action = WorkloadUnits.unitsForWorkBlock(goal);
       projectOffsets(goal, dayCount - 1, today).forEach(offset => {
         if (offset >= 0 && offset < dayCount && !(offset === 0 && goal.doneToday)) totals[offset] += minutes * action;
       });
