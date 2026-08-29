@@ -10,6 +10,8 @@ The **Safe days ≤** filter limits the list to commitments at or below a chosen
 
 Commitments with data entered today always appear in a separate **Done today** section at the bottom of the list. Their cards remain grayed out, while unfinished commitments stay together above them.
 
+The **Stats** tab contains a horizontally scrollable workload chart spanning all available datapoint history and seven predicted days. Green bars total recorded positive datapoint values multiplied by each commitment's configured minutes per unit. Yellow bars use the same road-aware workload projection as the List and Timeline, and a red vertical line identifies today. Opening the tab scrolls the chart to today; scroll left for older history or right for the forecast.
+
 Each commitment starts with its Beeminder slug and description. Its status reports whether the API returned a datapoint dated today. The **+ Data** action accepts a numeric value and optional comment and records the datapoint directly in Beeminder; credentials and entry data are sent from the browser to Beeminder and are not routed through another server.
 
 Description lines written as Markdown checklist items, such as `- [ ] Draft` or `- [x] Review`, appear as checkboxes directly on the commitment card. Their checked state is stored immediately on the current device and survives reloads or switching away from the app without changing the Beeminder description. Editing the checklist description resets all its saved checks, and a successful datapoint submission clears the checks for that commitment.

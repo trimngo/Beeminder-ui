@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.51';
+const APP_VERSION = '1.0.52';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -50,6 +50,7 @@ function updateAuthUI() {
   $('#auth-gate').hidden = connected; $('#test-data-banner').hidden = !state.usingSample;
   $('#list-view').hidden = !connected || state.mode !== 'list';
   $('#timeline-view').hidden = !connected || state.mode !== 'timeline';
+  $('#stats-view').hidden = !connected || state.mode !== 'stats';
 }
 function todayDaystamp(timeZone) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -259,7 +260,7 @@ function render() {
   $('#reset-filters').hidden = !connected; $('#empty-connect').hidden = connected;
   els.safeDays.value = state.maxSafeDays;
   els.sort.value = state.sort;
-  els.search.value = state.query; els.clear.hidden = !state.query; renderTimeline(); updateAuthUI();
+  els.search.value = state.query; els.clear.hidden = !state.query; renderTimeline(); renderStats(); updateAuthUI();
 }
 function renderTagFilters() {
   const host = $('#tag-filters'); host.innerHTML = '';
@@ -353,8 +354,34 @@ function openSummaryCharts(focusChart) {
 function setMode(mode) {
   state.mode = mode; localStorage.setItem('bee-mode', mode);
   $('#list-tab').classList.toggle('active', mode === 'list'); $('#timeline-tab').classList.toggle('active', mode === 'timeline');
-  $('#list-tab').setAttribute('aria-selected', mode === 'list'); $('#timeline-tab').setAttribute('aria-selected', mode === 'timeline');
-  if (mode === 'timeline') renderTimeline(); else closeDatapointTooltip(); updateAuthUI();
+  $('#stats-tab').classList.toggle('active', mode === 'stats');
+  $('#list-tab').setAttribute('aria-selected', mode === 'list'); $('#timeline-tab').setAttribute('aria-selected', mode === 'timeline'); $('#stats-tab').setAttribute('aria-selected', mode === 'stats');
+  if (mode === 'timeline') renderTimeline(); else closeDatapointTooltip();
+  if (mode === 'stats') renderStats(true);
+  updateAuthUI();
+}
+function statsDayLabel(daystamp) {
+  const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))));
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
+}
+function renderStats(focusToday = false) {
+  const host = $('#workload-chart'); if (!host) return;
+  const today = todayDaystamp(state.timeZone);
+  const series = BeeWorkloadHistory.workloadSeries(state.goals, today, 7, BeeProjection.projectedWorkloadDeadlineOffsets);
+  const maximum = Math.max(1, ...series.map(item => Math.max(item.actual, item.predicted)));
+  host.innerHTML = ''; host.style.setProperty('--history-days', series.length);
+  series.forEach(item => {
+    const column = document.createElement('div'); column.className = `workload-day${item.today ? ' today' : ''}`;
+    column.dataset.daystamp = item.daystamp;
+    const amount = item.actual || item.predicted, bar = document.createElement('div');
+    bar.className = `workload-bar ${item.predicted ? 'predicted' : 'actual'}`;
+    bar.style.setProperty('--workload-height', `${amount / maximum * 100}%`);
+    bar.title = `${statsDayLabel(item.daystamp)}: ${BeeDashboardSummary.formatDuration(amount)} ${item.predicted ? 'predicted' : 'recorded'}`;
+    const value = document.createElement('strong'); value.textContent = BeeDashboardSummary.formatCompactDuration(amount);
+    const label = document.createElement('span'); label.textContent = statsDayLabel(item.daystamp);
+    column.append(value, bar, label); host.append(column);
+  });
+  if (focusToday) requestAnimationFrame(() => host.querySelector('.today')?.scrollIntoView({ inline: 'center', block: 'nearest' }));
 }
 function showDatapointTooltip(goal, daystamp, datapoints) {
   $('#datapoint-tooltip-title').textContent = `${goal.slug} · ${dayLabel(daystamp, daystamp === todayDaystamp(state.timeZone) ? 0 : 1)}`;
@@ -604,6 +631,8 @@ $('#settings-button').onclick = () => { $('#username').value = localStorage.getI
 $('#timeline-settings').onclick = $('#settings-button').onclick;
 $('#list-tab').onclick = () => setMode('list');
 $('#timeline-tab').onclick = () => setMode('timeline');
+$('#stats-tab').onclick = () => setMode('stats');
+$('#stats-settings').onclick = $('#settings-button').onclick;
 $('#future-days').onchange = event => { state.futureDays = Number(event.target.value); localStorage.setItem('bee-future-days', String(state.futureDays)); closeDatapointTooltip(); renderTimeline(); };
 $('#datapoint-tooltip-close').onclick = closeDatapointTooltip;
 $('#data-dialog-close').onclick = () => els.dataDialog.close();

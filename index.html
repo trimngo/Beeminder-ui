@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=51" />
+  <link rel="stylesheet" href="styles.css?v=52" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -19,13 +19,14 @@
       <nav class="mode-tabs" aria-label="View mode">
         <button class="mode-tab active" id="list-tab" type="button" aria-selected="true">List</button>
         <button class="mode-tab" id="timeline-tab" type="button" aria-selected="false">Timeline</button>
+        <button class="mode-tab" id="stats-tab" type="button" aria-selected="false">Stats</button>
       </nav>
 
       <div class="test-data-banner" id="test-data-banner" hidden>LOCAL TEST DATA · NOT BEEMINDER</div>
       <section class="auth-gate" id="auth-gate" hidden aria-labelledby="auth-gate-title">
         <div class="auth-gate-icon">→</div>
         <h1 id="auth-gate-title">Sign in to Beeminder</h1>
-        <p>Connect once to use your commitments in both List and Timeline modes.</p>
+        <p>Connect once to use your commitments in List, Timeline, and Stats modes.</p>
         <button class="primary-button" id="auth-gate-button" type="button">Sign in to Beeminder</button>
         <p class="privacy-note">Your username and personal token stay on this device.</p>
       </section>
@@ -91,7 +92,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.51</span>
+        <span id="version-label">Version 1.0.52</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -103,6 +104,15 @@
         </div>
         <div class="timeline-legend"><span><i class="history-mark"></i>Data entered</span><span><i class="derail-mark">×</i>Derailment</span><span><i class="due-mark"></i>Estimated action date</span></div>
         <div class="timeline-scroll" id="timeline-scroll"></div>
+      </section>
+      <section id="stats-view" class="stats-view" aria-labelledby="stats-heading" hidden>
+        <div class="stats-toolbar">
+          <div><h2 id="stats-heading">Workload history</h2><p>Recorded work and the next 7 predicted days</p></div>
+          <button class="icon-button compact" id="stats-settings" aria-label="Open settings">⚙</button>
+        </div>
+        <div class="stats-legend"><span><i class="actual-work"></i>Recorded</span><span><i class="predicted-work"></i>Predicted</span><span><i class="today-line-key"></i>Today</span></div>
+        <div class="workload-chart-scroll" id="workload-chart-scroll"><div class="workload-chart" id="workload-chart"></div></div>
+        <p class="stats-note">Recorded workload is each positive datapoint value multiplied by that commitment's configured minutes per unit.</p>
       </section>
     </main>
   </div>
@@ -212,8 +222,9 @@
   <script src="goal-search.js?v=30"></script>
   <script src="goal-filters.js?v=50"></script>
   <script src="goal-checklist.js?v=36"></script>
+  <script src="workload-history.js?v=52"></script>
   <script src="google-calendar.js?v=40"></script>
   <script src="accountability.js?v=25"></script>
-  <script src="app.js?v=51"></script>
+  <script src="app.js?v=52"></script>
 </body>
 </html>
