@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.41';
+const APP_VERSION = '1.0.42';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -265,6 +265,25 @@ function renderDashboardSummary(filtered = filteredGoals()) {
   $('#filtered-time-total').textContent = BeeDashboardSummary.formatDuration(filteredMinutes);
   $('#filtered-time-note').textContent = `${filtered.length} displayed${filteredMissing ? ` · ${filteredMissing} missing time` : ''}`;
   $('#penalty-total').textContent = `$${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(paid)}`;
+  renderWorkloadForecast();
+}
+function forecastDayLabel(daystamp, offset) {
+  if (offset === 0) return 'Today';
+  const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))));
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short', timeZone: 'UTC' }).format(date);
+}
+function renderWorkloadForecast() {
+  const host = $('#workload-forecast-days'), today = todayDaystamp(state.timeZone);
+  const totals = BeeDashboardSummary.sevenDayWorkload(state.goals, today, BeeProjection.projectedDeadlineOffsets, BeeProjection.estimatedActionValue);
+  const maximum = Math.max(...totals, 1); host.innerHTML = '';
+  totals.forEach((minutes, offset) => {
+    const daystamp = shiftDaystamp(today, offset), item = document.createElement('div'); item.className = 'forecast-day';
+    item.style.setProperty('--forecast-load', `${Math.max(5, minutes / maximum * 100)}%`);
+    const label = document.createElement('span'); label.textContent = forecastDayLabel(daystamp, offset);
+    const value = document.createElement('strong'); value.textContent = BeeDashboardSummary.formatCompactDuration(minutes);
+    item.title = `${forecastDayLabel(daystamp, offset)}: ${BeeDashboardSummary.formatDuration(minutes)} predicted`;
+    item.append(label, value); host.append(item);
+  });
 }
 function renderBreakdownChart(host, { id, title, items, formatter }) {
   const section = document.createElement('section'); section.className = 'breakdown-chart'; section.dataset.chart = id;

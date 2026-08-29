@@ -52,6 +52,28 @@
     })).filter(item => item.value > 0).sort((a, b) => b.value - a.value || a.slug.localeCompare(b.slug));
   }
 
+  function sevenDayWorkload(goals, today, projectOffsets, actionValue, dayCount = 7) {
+    const totals = Array.from({ length: dayCount }, () => 0);
+    if (typeof projectOffsets !== 'function' || typeof actionValue !== 'function') return totals;
+    (Array.isArray(goals) ? goals : []).forEach(goal => {
+      const minutes = Number(goal.minutesPerUnit);
+      if (!Number.isFinite(minutes) || minutes <= 0) return;
+      const action = Math.abs(Number(actionValue(goal, today)));
+      if (!Number.isFinite(action) || action <= 0) return;
+      projectOffsets(goal, dayCount - 1, today).forEach(offset => {
+        if (offset >= 0 && offset < dayCount && !(offset === 0 && goal.doneToday)) totals[offset] += minutes * action;
+      });
+    });
+    return totals;
+  }
+
+  function formatCompactDuration(minutes) {
+    const value = Number(minutes);
+    if (!Number.isFinite(value) || value <= 0) return '0m';
+    if (value < 60) return `${Math.round(value)}m`;
+    return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value / 60)}h`;
+  }
+
   function totalPenalties(goals, countDerails, derailCost = 5) {
     if (typeof countDerails !== 'function') return 0;
     return (Array.isArray(goals) ? goals : []).reduce((total, goal) =>
@@ -66,5 +88,5 @@
     return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(hours)} hr`;
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, totalPenalties, formatDuration };
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, totalPenalties, formatDuration, formatCompactDuration };
 }));
