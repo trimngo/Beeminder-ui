@@ -48,5 +48,9 @@ assert.equal(summary.remainingWorkdaySeconds(new Date('2026-08-29T22:00:00Z'), '
 assert.equal(summary.remainingWorkdaySeconds(new Date('2026-08-29T23:00:00Z'), 'America/New_York'), 7200);
 assert.equal(summary.formatCountdown(3671), '1:01:11');
 assert.equal(summary.formatCountdown(0), '0:00:00');
+assert.equal(summary.workdayCountdownStatus(7201, 60), 'safe');
+assert.equal(summary.workdayCountdownStatus(7200, 60), 'warning');
+assert.equal(summary.workdayCountdownStatus(3600, 60), 'danger');
+assert.equal(summary.workdayCountdownStatus(0, 60), 'expired');
 
 console.log('dashboard summary tests passed');

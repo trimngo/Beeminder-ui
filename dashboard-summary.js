@@ -114,5 +114,14 @@
     return `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown };
+  function workdayCountdownStatus(seconds, workloadMinutes) {
+    const remaining = Math.max(0, Number(seconds) || 0);
+    const workload = Math.max(0, Number(workloadMinutes) || 0) * 60;
+    if (remaining === 0) return 'expired';
+    if (remaining <= workload) return 'danger';
+    if (remaining <= workload + 3600) return 'warning';
+    return 'safe';
+  }
+
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown, workdayCountdownStatus };
 }));
