@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { workloadSeries } = require('./workload-history.js');
+const { workloadSeries, goalHue } = require('./workload-history.js');
 
 const goals = [
   { slug: 'write', minutesPerUnit: 10, datapoints: [{ daystamp: '20260827', value: 2 }, { daystamp: '20260829', value: 1 }] },
@@ -18,4 +18,6 @@ assert.deepEqual(series.at(-2).components, [{ slug: 'move', minutes: 30 }]);
 assert.deepEqual(series.at(-1).components, [{ slug: 'write', minutes: 10 }]);
 assert.equal(series.find(day => day.daystamp === '20260828').mean, 50 / 7);
 assert.ok(series.find(day => day.daystamp === '20260828').upper > series.find(day => day.daystamp === '20260828').mean);
+assert.equal(goalHue('write'), goalHue('write'));
+assert.notEqual(goalHue('write'), goalHue('move'));
 console.log('workload history tests passed');

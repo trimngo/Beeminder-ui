@@ -8,6 +8,12 @@
     return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
   }
 
+  function goalHue(slug) {
+    let hash = 0;
+    for (const character of String(slug || '')) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+    return hash % 360;
+  }
+
   function workloadSeries(goals, today, futureDays, projectOffsets) {
     const items = Array.isArray(goals) ? goals : [];
     const historical = new Map();
@@ -53,5 +59,5 @@
     return result;
   }
 
-  return { workloadSeries, shiftDaystamp };
+  return { workloadSeries, shiftDaystamp, goalHue };
 }));

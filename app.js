@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.54';
+const APP_VERSION = '1.0.55';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -380,13 +380,19 @@ function renderStats(focusToday = false) {
     bar.className = `workload-bar ${item.predicted ? 'predicted' : 'actual'}`;
     bar.style.setProperty('--workload-height', `${amount / maximum * 100}%`);
     bar.title = `${statsDayLabel(item.daystamp)}: ${BeeDashboardSummary.formatDuration(amount)} ${item.predicted ? 'predicted' : 'recorded'}`;
-    item.components.forEach((component, index) => {
-      const segment = document.createElement('i'); segment.style.cssText = `--segment-share:${amount ? component.minutes / amount * 100 : 0}%;--segment-hue:${(index * 67 + 145) % 360}`; segment.title = `${component.slug}: ${BeeDashboardSummary.formatDuration(component.minutes)}`; bar.append(segment);
+    item.components.forEach(component => {
+      const segment = document.createElement('i'); segment.style.cssText = `--segment-share:${amount ? component.minutes / amount * 100 : 0}%;--segment-hue:${BeeWorkloadHistory.goalHue(component.slug)}`; segment.title = `${component.slug}: ${BeeDashboardSummary.formatDuration(component.minutes)}`; bar.append(segment);
     });
     bar.onclick = () => {
       detail.innerHTML = ''; const heading = document.createElement('strong'); heading.textContent = `${weekday}, ${statsDayLabel(item.daystamp)} · ${BeeDashboardSummary.formatDuration(amount)}`; detail.append(heading);
       if (!item.components.length) { const empty = document.createElement('span'); empty.textContent = 'No configured workload.'; detail.append(empty); }
-      item.components.slice().sort((a, b) => b.minutes - a.minutes).forEach(component => { const row = document.createElement('span'); row.textContent = `${component.slug} · ${BeeDashboardSummary.formatDuration(component.minutes)}`; detail.append(row); });
+      item.components.slice().sort((a, b) => b.minutes - a.minutes).forEach(component => {
+        const row = document.createElement('span'); row.className = 'workload-detail-row';
+        const swatch = document.createElement('i'); swatch.style.setProperty('--segment-hue', BeeWorkloadHistory.goalHue(component.slug));
+        const name = document.createElement('b'); name.textContent = component.slug;
+        const duration = document.createElement('em'); duration.textContent = BeeDashboardSummary.formatDuration(component.minutes);
+        row.append(swatch, name, duration); detail.append(row);
+      });
     };
     const value = document.createElement('strong'); value.textContent = BeeDashboardSummary.formatCompactDuration(amount);
     const label = document.createElement('span'); label.textContent = `${weekday} ${statsDayLabel(item.daystamp)}`;
