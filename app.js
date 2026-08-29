@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.45';
+const APP_VERSION = '1.0.46';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -459,6 +459,32 @@ async function createDatapoint() {
   if (!response.ok) throw new Error(response.status === 401 ? 'Sign in again to enter data' : `Beeminder could not add this data (${response.status})`);
   return response.json();
 }
+async function refreshSubmittedGoal(slug, datapoint) {
+  const user = localStorage.getItem('bee-user'), token = localStorage.getItem('bee-token');
+  const goal = state.goals.find(item => item.slug === slug);
+  if (!user || !token || !goal) throw new Error('Could not refresh the completed commitment');
+  const params = new URLSearchParams({ auth_token: token, _: String(Date.now()) });
+  const response = await fetch(`https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}/goals/${encodeURIComponent(slug)}.json?${params}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Could not refresh safety days (${response.status})`);
+  const updated = await response.json();
+  const datapoints = goal.datapoints.some(point => point.id && point.id === datapoint?.id)
+    ? goal.datapoints
+    : [datapoint, ...goal.datapoints].filter(Boolean);
+  Object.assign(goal, normalizeGoal({
+    ...goal,
+    rawTitle: updated.title || goal.rawTitle,
+    fineprint: updated.fineprint ?? goal.fineprint,
+    safebuf: Number.isFinite(updated.safebuf) ? updated.safebuf : goal.safebuf,
+    rate: updated.rate ?? goal.rate,
+    runits: updated.runits ?? goal.runits,
+    quantum: updated.quantum ?? goal.quantum,
+    datapoints,
+    doneToday: true,
+    updated: 0
+  }));
+  persistGoals();
+  render();
+}
 let refreshPromise = null;
 async function refreshGoals({ announce = false } = {}) {
   if (state.usingSample) return;
@@ -579,18 +605,30 @@ $('#data-entry-form').onsubmit = async event => {
   const button = $('#save-data-button'), error = $('#data-error');
   button.disabled = true; button.textContent = 'Adding…'; error.hidden = true;
   try {
-    await createDatapoint();
-    BeeGoalChecklist.clear(localStorage, checklistUsername(), state.dataEntrySlug);
-    render();
+    const slug = state.dataEntrySlug;
+    const datapoint = await createDatapoint();
+    BeeGoalChecklist.clear(localStorage, checklistUsername(), slug);
+    let safetyRefreshed = true;
+    try {
+      await refreshSubmittedGoal(slug, datapoint);
+    } catch (refreshError) {
+      safetyRefreshed = false;
+      const goal = state.goals.find(item => item.slug === slug);
+      if (goal) {
+        goal.doneToday = true;
+        if (!goal.datapoints.some(point => point.id && point.id === datapoint?.id)) goal.datapoints.unshift(datapoint);
+        persistGoals(); render();
+      }
+      refreshGoals().catch(() => {});
+    }
     els.dataDialog.close();
-    toast('Data added to Beeminder');
+    toast(safetyRefreshed ? 'Data added to Beeminder' : 'Data added · safety days are still refreshing');
   } catch (caught) {
     error.textContent = caught.message || 'Could not add data'; error.hidden = false;
     return;
   } finally {
     button.disabled = false; button.textContent = 'Add data to Beeminder';
   }
-  refreshGoals().catch(() => toast('Data added · refresh failed'));
 };
 $('#settings-form').onsubmit = async event => {
   if (event.submitter.value === 'cancel') return; event.preventDefault(); const user = $('#username').value.trim(), token = $('#auth-token').value.trim();
