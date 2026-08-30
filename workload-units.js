@@ -22,5 +22,27 @@
     return Number.isFinite(minutes) && minutes > 0 ? minutes * unitsForWorkBlock(goal) : 0;
   }
 
-  return { dailyTarget, unitsForWorkBlock, minutesForWorkBlock };
+  function enteredUnitsOnDay(goal, daystamp) {
+    return (Array.isArray(goal?.datapoints) ? goal.datapoints : []).reduce((total, point) => {
+      const value = Number(point?.value);
+      return point?.daystamp === daystamp && Number.isFinite(value) && value > 0 ? total + value : total;
+    }, 0);
+  }
+
+  function remainingUnitsForWorkBlock(goal) {
+    return Math.max(0, unitsForWorkBlock(goal) - Math.max(0, Number(goal?.todayUnits) || 0));
+  }
+
+  function minutesForRemainingWorkBlock(goal) {
+    const minutes = Number(goal?.minutesPerUnit);
+    return Number.isFinite(minutes) && minutes > 0 ? minutes * remainingUnitsForWorkBlock(goal) : 0;
+  }
+
+  function isWorkBlockComplete(goal, daystamp) {
+    const points = (Array.isArray(goal?.datapoints) ? goal.datapoints : []).filter(point => point?.daystamp === daystamp);
+    if (!(dailyTarget(goal) > 0) || goal?.kyoom === false) return points.length > 0;
+    return enteredUnitsOnDay(goal, daystamp) + Number.EPSILON >= unitsForWorkBlock(goal);
+  }
+
+  return { dailyTarget, unitsForWorkBlock, minutesForWorkBlock, enteredUnitsOnDay, remainingUnitsForWorkBlock, minutesForRemainingWorkBlock, isWorkBlockComplete };
 }));

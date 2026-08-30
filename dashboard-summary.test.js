@@ -24,6 +24,9 @@ const multiUnitGoal = { slug: 'teachprep', rate: 4, runits: 'd', safebuf: 0, don
 assert.equal(summary.estimatedMinutesToSafety([multiUnitGoal]), 120);
 assert.equal(summary.estimatedMinutesForGoals([multiUnitGoal]), 120);
 assert.deepEqual(summary.workloadBreakdown([multiUnitGoal], true), [{ slug: 'teachprep', value: 120 }]);
+const partialMultiUnitGoal = { ...multiUnitGoal, todayUnits: 1 };
+assert.equal(summary.estimatedMinutesToSafety([partialMultiUnitGoal]), 90);
+assert.deepEqual(summary.workloadBreakdown([partialMultiUnitGoal], true), [{ slug: 'teachprep', value: 90 }]);
 assert.deepEqual(summary.penaltyBreakdown(goals, points => points.filter(point => point.derail || point.comment === '#DERAIL').length), [
   { slug: '', value: 5 }, { slug: '', value: 5 }
 ]);
@@ -36,6 +39,7 @@ assert.deepEqual(summary.sevenDayWorkload(forecastGoals, '20260829', projection.
 assert.deepEqual(summary.sevenDayCommitmentCounts(forecastGoals, '20260829', projection.projectedWorkloadDeadlineOffsets), [1, 2, 3, 2, 2, 2, 2]);
 assert.deepEqual(summary.sevenDayWorkload([multiUnitGoal], '20260829', projection.projectedWorkloadDeadlineOffsets), [120, 120, 120, 120, 120, 120, 120]);
 assert.deepEqual(summary.sevenDayCommitmentCounts([multiUnitGoal], '20260829', projection.projectedWorkloadDeadlineOffsets), [1, 1, 1, 1, 1, 1, 1]);
+assert.deepEqual(summary.sevenDayWorkload([partialMultiUnitGoal], '20260829', projection.projectedWorkloadDeadlineOffsets), [90, 120, 120, 120, 120, 120, 120]);
 const stableForecastGoal = { rate: 2, runits: 'w', safebuf: 1, minutesPerUnit: 15, quantum: 1, doneToday: false, datapoints: [] };
 const beforeEntry = summary.sevenDayWorkload([stableForecastGoal], '20260829', projection.projectedWorkloadDeadlineOffsets);
 stableForecastGoal.datapoints.push({ daystamp: '20260829', value: 20 });

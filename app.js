@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.61';
+const APP_VERSION = '1.0.62';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -26,7 +26,11 @@ function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '')
 function normalizeGoal(goal) {
   // Migrate goals cached by older releases, where fine print was stored as `description`.
   const parsed = BeeGoalMetadata.parse(cleanText(goal.rawTitle || goal.title || goal.slug));
-  return { ...goal, rawTitle: parsed.rawTitle, title: parsed.title, minutesPerUnit: parsed.minutes, metadataTags: parsed.tags, hasMetadata: parsed.hasMetadata, fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), kyoom: goal.kyoom !== false, aggday: goal.aggday || 'sum', fullroad: Array.isArray(goal.fullroad) ? goal.fullroad : [], datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
+  const normalized = { ...goal, rawTitle: parsed.rawTitle, title: parsed.title, minutesPerUnit: parsed.minutes, metadataTags: parsed.tags, hasMetadata: parsed.hasMetadata, fineprint: cleanText(goal.fineprint ?? goal.description ?? ''), kyoom: goal.kyoom !== false, aggday: goal.aggday || 'sum', fullroad: Array.isArray(goal.fullroad) ? goal.fullroad : [], datapoints: Array.isArray(goal.datapoints) ? goal.datapoints : [] };
+  const today = todayDaystamp(state.timeZone);
+  normalized.todayUnits = BeeWorkloadUnits.enteredUnitsOnDay(normalized, today);
+  normalized.doneToday = BeeWorkloadUnits.isWorkBlockComplete(normalized, today);
+  return normalized;
 }
 function loadLocalGoals() {
   if (IS_LOCAL_TEST && TEST_PARAMS.get('sample') === '1') {
@@ -56,10 +60,6 @@ function todayDaystamp(timeZone) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
     .formatToParts(new Date()).reduce((result, part) => ({ ...result, [part.type]: part.value }), {});
   return `${parts.year}${parts.month}${parts.day}`;
-}
-function hasDataToday(datapoints, timeZone) {
-  const today = todayDaystamp(timeZone);
-  return Array.isArray(datapoints) && datapoints.some(point => point.daystamp === today);
 }
 function todayAccountabilityMessage() {
   return BeeAccountability.todayWinsMessage(state.goals, todayDaystamp(state.timeZone));
@@ -218,7 +218,10 @@ function render() {
     timePill.textContent = goal.minutesPerUnit === null ? '' : `${formatDailyRate(goal.minutesPerUnit)} min/unit ·`;
     timePill.hidden = goal.minutesPerUnit === null;
     const status = node.querySelector('.today-status');
-    status.textContent = goal.doneToday ? 'Done today' : 'No data today'; status.classList.toggle('complete', goal.doneToday);
+    status.textContent = goal.doneToday ? 'Done today' : goal.todayUnits > 0
+      ? `${formatDailyRate(BeeWorkloadUnits.remainingUnitsForWorkBlock(goal))} left today`
+      : 'No data today';
+    status.classList.toggle('complete', goal.doneToday);
     status.setAttribute('aria-label', `Show all data entries for ${goal.slug}`);
     status.onclick = () => openGoalHistory(goal.slug);
     node.querySelector('.edit-goal-button').onclick = () => openGoalEditor(goal.slug);
@@ -475,7 +478,8 @@ function openCalendarDialog(slug) {
   const goal = state.goals.find(item => item.slug === slug); if (!goal || !(Number(goal.minutesPerUnit) > 0)) return;
   const start = BeeGoogleCalendar.defaultStart(new Date(), state.timeZone);
   state.calendarSlug = slug; $('#calendar-goal-title').textContent = goal.slug; $('#calendar-date').value = start.date; $('#calendar-time').value = start.time;
-  $('#calendar-duration').value = String(Math.max(1, Math.ceil(BeeWorkloadUnits.minutesForWorkBlock(goal))));
+  const calendarMinutes = goal.doneToday ? BeeWorkloadUnits.minutesForWorkBlock(goal) : BeeWorkloadUnits.minutesForRemainingWorkBlock(goal);
+  $('#calendar-duration').value = String(Math.max(1, Math.ceil(calendarMinutes)));
   els.calendarDialog.showModal();
 }
 function googleCalendarUrl() {
@@ -574,7 +578,6 @@ async function refreshSubmittedGoal(slug, datapoint) {
     yaw: updated.yaw ?? goal.yaw,
     fullroad: updated.fullroad ?? goal.fullroad,
     datapoints,
-    doneToday: true,
     updated: 0
   }));
   persistGoals();
@@ -608,7 +611,7 @@ async function refreshGoals({ announce = false } = {}) {
         slug: goal.slug, title: goal.title || goal.slug, fineprint: goal.fineprint || '',
         safebuf: Number.isFinite(goal.safebuf) ? goal.safebuf : 99,
         rate: goal.rate, runits: goal.runits, quantum: goal.quantum, curval: goal.curval, yaw: goal.yaw, fullroad: goal.fullroad, kyoom: goal.kyoom, aggday: goal.aggday, pledge: goal.pledge,
-        datapoints: goal.datapoints || [], doneToday: hasDataToday(goal.datapoints, timeZone),
+        datapoints: goal.datapoints || [],
         updated: Date.now() / 60000 - (goal.updated_at || 0) / 60
       }));
       persistGoals();
@@ -702,8 +705,9 @@ $('#data-entry-form').onsubmit = async event => {
     BeeGoalChecklist.clear(localStorage, checklistUsername(), slug);
     const submittedGoal = state.goals.find(item => item.slug === slug);
     if (submittedGoal) {
-      submittedGoal.doneToday = true;
       if (!submittedGoal.datapoints.some(point => point.id && point.id === datapoint?.id)) submittedGoal.datapoints.unshift(datapoint);
+      submittedGoal.todayUnits = BeeWorkloadUnits.enteredUnitsOnDay(submittedGoal, todayDaystamp(state.timeZone));
+      submittedGoal.doneToday = BeeWorkloadUnits.isWorkBlockComplete(submittedGoal, todayDaystamp(state.timeZone));
       state.refreshingSafetySlug = slug;
       persistGoals(); render();
     }

@@ -9,7 +9,7 @@
       if (goal.doneToday || Number(goal.safebuf) > 0) return total;
       const minutes = Number(goal.minutesPerUnit);
       if (!Number.isFinite(minutes) || minutes <= 0) return total;
-      return total + WorkloadUnits.minutesForWorkBlock(goal);
+      return total + WorkloadUnits.minutesForRemainingWorkBlock(goal);
     }, 0);
   }
 
@@ -39,7 +39,7 @@
       if (dueOnly && (goal.doneToday || Number(goal.safebuf) > 0)) return [];
       const minutes = Number(goal.minutesPerUnit);
       if (!Number.isFinite(minutes) || minutes <= 0) return [];
-      return [{ slug: String(goal.slug || ''), value: WorkloadUnits.minutesForWorkBlock(goal) }];
+      return [{ slug: String(goal.slug || ''), value: WorkloadUnits.minutesForRemainingWorkBlock(goal) }];
     }).filter(item => item.value > 0).sort((a, b) => b.value - a.value || a.slug.localeCompare(b.slug));
   }
 
@@ -58,7 +58,9 @@
       if (!Number.isFinite(minutes) || minutes <= 0) return;
       const action = WorkloadUnits.unitsForWorkBlock(goal);
       projectOffsets(goal, dayCount - 1, today).forEach(offset => {
-        if (offset >= 0 && offset < dayCount && !(offset === 0 && goal.doneToday)) totals[offset] += minutes * action;
+        if (offset >= 0 && offset < dayCount && !(offset === 0 && goal.doneToday)) {
+          totals[offset] += offset === 0 ? WorkloadUnits.minutesForRemainingWorkBlock(goal) : minutes * action;
+        }
       });
     });
     return totals;
