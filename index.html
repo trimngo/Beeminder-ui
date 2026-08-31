@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="styles.css?v=65" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -19,35 +19,61 @@
       <nav class="mode-tabs" aria-label="View mode">
         <button class="mode-tab active" id="list-tab" type="button" aria-selected="true">List</button>
         <button class="mode-tab" id="timeline-tab" type="button" aria-selected="false">Timeline</button>
+        <button class="mode-tab" id="stats-tab" type="button" aria-selected="false">Stats</button>
       </nav>
 
       <div class="test-data-banner" id="test-data-banner" hidden>LOCAL TEST DATA · NOT BEEMINDER</div>
       <section class="auth-gate" id="auth-gate" hidden aria-labelledby="auth-gate-title">
         <div class="auth-gate-icon">→</div>
         <h1 id="auth-gate-title">Sign in to Beeminder</h1>
-        <p>Connect once to use your commitments in both List and Timeline modes.</p>
+        <p>Connect once to use your commitments in List, Timeline, and Stats modes.</p>
         <button class="primary-button" id="auth-gate-button" type="button">Sign in to Beeminder</button>
         <p class="privacy-note">Your username and personal token stay on this device.</p>
       </section>
 
       <div id="list-view">
-      <section class="views-section" aria-labelledby="views-heading">
-        <div class="section-heading">
-          <h2 id="views-heading">Saved views</h2>
-          <button class="text-button" id="save-view-button">+ Save current</button>
+      <section class="workday-countdown-row safe" id="workday-countdown-row" aria-label="Workday time remaining">
+        <div class="workday-progress">
+          <i class="safe-zone" aria-hidden="true"></i><i class="yellow-zone" aria-hidden="true"></i><i class="red-zone" aria-hidden="true"></i><i class="required-zone" aria-hidden="true"></i>
+          <i class="current-time-marker" aria-hidden="true"></i>
+          <div class="workday-copy"><div><span>Workday remaining</span><small id="workday-slack"></small></div><strong id="workday-countdown">0:00:00</strong></div>
+          <div class="workday-threshold-labels"><span class="threshold-two">2h <b id="workday-warning-two"></b></span><span class="threshold-one">1h <b id="workday-warning-one"></b></span><span class="threshold-start">Start <b id="workday-start-by"></b></span></div>
+          <div class="workday-ticks" aria-hidden="true"></div>
+          <div class="workday-axis" id="workday-axis" aria-hidden="true"></div>
         </div>
-        <div class="view-chips" id="view-chips"></div>
       </section>
-
+      <section class="dashboard-summary" aria-label="Today's commitment summary">
+        <button class="summary-trigger" type="button" data-chart="today" aria-label="Show workload and penalty breakdown charts">
+          <span>Time to stay safe today</span>
+          <strong id="today-time-total">0 min</strong>
+          <small id="today-time-note"></small>
+        </button>
+        <button class="summary-trigger" type="button" data-chart="filtered" aria-label="Show filtered workload breakdown chart">
+          <span>Filtered workload</span>
+          <strong id="filtered-time-total">0 min</strong>
+          <small id="filtered-time-note">0 displayed</small>
+        </button>
+        <button class="summary-trigger" type="button" data-chart="penalties" aria-label="Show penalty breakdown chart">
+          <span>Penalties paid so far</span>
+          <strong id="penalty-total">$0</strong>
+          <small>Lifetime total</small>
+        </button>
+      </section>
+      <section class="workload-forecast" aria-labelledby="workload-forecast-title">
+        <h2 id="workload-forecast-title">Predicted workload · select one or more days</h2>
+        <div id="workload-forecast-days"></div>
+      </section>
       <section class="filters" aria-label="Filters">
         <label class="search-box">
           <span aria-hidden="true">⌕</span>
           <input id="search-input" type="search" placeholder="Filter by tag or keyword" autocomplete="off" />
           <button id="clear-search" aria-label="Clear search" hidden>×</button>
         </label>
-        <p class="filter-help">Try <button type="button" data-filter="#deep">#deep</button>, <button type="button" data-filter="-#red">-#red</button>, or <button type="button" data-filter="-done:today">-done:today</button></p>
+        <div class="tag-filters" id="tag-filters" aria-label="Tag filters"></div>
         <div class="filter-row">
-          <button class="filter-button" id="done-filter" aria-pressed="true"><span class="toggle-dot"></span> Hide done today</button>
+          <label class="safe-days-control">Safe days ≤
+            <input id="safe-days-filter" type="number" inputmode="decimal" min="0" step="any" placeholder="Any" aria-label="Maximum number of safe days" />
+          </label>
           <label class="sort-control">Sort
             <select id="sort-select" aria-label="Sort commitments">
               <option value="urgency">Most urgent</option>
@@ -55,6 +81,8 @@
               <option value="recent">Recently updated</option>
               <option value="compliance-low">Lowest compliance</option>
               <option value="compliance-high">Highest compliance</option>
+              <option value="time-asc">Quickest first</option>
+              <option value="time-desc">Longest first</option>
             </select>
           </label>
         </div>
@@ -63,7 +91,7 @@
       <section class="commitments" aria-labelledby="commitments-heading">
         <div class="section-heading list-heading">
           <h2 id="commitments-heading">Commitments</h2>
-          <div class="list-actions"><span id="updated-label">Not connected</span><button class="copy-today-button" id="copy-today-button" type="button" aria-label="Copy today’s accountability update">Copy</button><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
+          <div class="list-actions"><span id="updated-label">Not connected</span><button class="accountability-button" id="accountability-button" type="button" aria-label="Open accountability exports">Export</button><button class="icon-button compact" id="settings-button" aria-label="Open settings">⚙</button></div>
         </div>
         <div id="goal-list" class="goal-list"></div>
         <div id="empty-state" class="empty-state" hidden>
@@ -74,7 +102,7 @@
       </section>
 
       <footer class="version-footer">
-        <span id="version-label">Version 1.0.20</span>
+        <span id="version-label">Version 1.0.65</span>
         <button type="button" id="update-button"><span class="version-dot"></span><span id="update-label">Checking for updates…</span></button>
       </footer>
       </div>
@@ -87,17 +115,18 @@
         <div class="timeline-legend"><span><i class="history-mark"></i>Data entered</span><span><i class="derail-mark">×</i>Derailment</span><span><i class="due-mark"></i>Estimated action date</span></div>
         <div class="timeline-scroll" id="timeline-scroll"></div>
       </section>
+      <section id="stats-view" class="stats-view" aria-labelledby="stats-heading" hidden>
+        <div class="stats-toolbar">
+          <div><h2 id="stats-heading">Workload history</h2><p>Recorded work and the next 7 predicted days</p></div>
+          <button class="icon-button compact" id="stats-settings" aria-label="Open settings">⚙</button>
+        </div>
+        <div class="stats-legend"><span><i class="actual-work"></i>Recorded</span><span><i class="predicted-work"></i>Predicted</span><span><i class="average-work"></i>7-day mean ± 1σ</span><span><i class="today-line-key"></i>Today</span></div>
+        <div class="workload-chart-layout"><div class="workload-y-axis" id="workload-y-axis"></div><div class="workload-chart-scroll" id="workload-chart-scroll"><div class="workload-chart" id="workload-chart"></div></div></div>
+        <div class="workload-detail" id="workload-detail"><strong>Select a bar</strong><span>See the commitments contributing to that day.</span></div>
+        <p class="stats-note">Recorded workload is each positive datapoint value multiplied by that commitment's configured minutes per unit.</p>
+      </section>
     </main>
   </div>
-
-  <dialog id="save-dialog">
-    <form method="dialog" id="save-view-form">
-      <div class="dialog-header"><div><p class="eyebrow">QUICK ACCESS</p><h2>Save this view</h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
-      <p class="dialog-copy">Save the current keyword and done filter for one-tap access.</p>
-      <label class="field">View name<input id="view-name" required maxlength="24" placeholder="e.g. Deep work" /></label>
-      <button value="default" class="primary-button">Save view</button>
-    </form>
-  </dialog>
 
   <dialog id="settings-dialog">
     <form method="dialog" id="settings-form">
@@ -114,11 +143,68 @@
 
   <dialog id="edit-dialog">
     <form method="dialog" id="edit-goal-form">
-      <div class="dialog-header"><div><p class="eyebrow">GOAL DETAILS</p><h2 id="edit-goal-slug"></h2></div><button value="cancel" class="close-button" aria-label="Close">×</button></div>
-      <label class="field">Description<input id="edit-goal-title" required maxlength="255" /></label>
+      <div class="dialog-header"><div><p class="eyebrow">GOAL DETAILS</p><h2 id="edit-goal-slug"></h2></div><button type="button" class="close-button" id="edit-goal-close" aria-label="Cancel commitment editing">×</button></div>
+      <label class="field">Description<textarea id="edit-goal-title" class="description-editor" required maxlength="255" rows="4"></textarea></label>
+      <div class="metadata-fields">
+        <label class="field">Minutes per unit<input id="edit-goal-minutes" type="number" inputmode="decimal" min="0.01" step="any" placeholder="Not set" /></label>
+        <label class="field">Tags<input id="edit-goal-tags" placeholder="health, deep" /></label>
+      </div>
+      <p class="privacy-note">Time and tags are stored with compact <code>m</code> and <code>t</code> keys at the beginning of the Beeminder description. Empty values take no title space.</p>
       <label class="field">Fine print<textarea id="edit-goal-fineprint" readonly></textarea></label>
       <p class="privacy-note">Beeminder’s documented API supports editing the description (title), but does not currently document fine-print updates. Fine print is shown exactly as Beeminder returns it and remains read-only here.</p>
-      <button value="default" class="primary-button" id="save-goal-button">Save description to Beeminder</button>
+      <button value="default" class="primary-button" id="save-goal-button">Save commitment to Beeminder</button>
+    </form>
+  </dialog>
+
+  <dialog id="data-dialog">
+    <form method="dialog" id="data-entry-form">
+      <div class="dialog-header"><div><p class="eyebrow">NEW DATAPOINT</p><h2 id="data-goal-slug"></h2></div><button type="button" class="close-button" id="data-dialog-close" aria-label="Cancel data entry">×</button></div>
+      <p class="dialog-copy">Record progress directly in Beeminder.</p>
+      <label class="field">Value<input id="data-value" type="number" inputmode="decimal" step="any" required placeholder="0" /></label>
+      <label class="field">Comment (optional)<textarea id="data-comment" maxlength="1000" placeholder="What did you do?"></textarea></label>
+      <p class="form-error" id="data-error" role="alert" hidden></p>
+      <button value="default" class="primary-button" id="save-data-button">Add data to Beeminder</button>
+    </form>
+  </dialog>
+
+  <dialog id="accountability-dialog">
+    <div class="export-dialog-content">
+      <div class="dialog-header"><div><p class="eyebrow">ACCOUNTABILITY</p><h2>Copy an update</h2></div><button type="button" class="close-button" id="accountability-dialog-close" aria-label="Close accountability exports">×</button></div>
+      <p class="dialog-copy">Choose what you want to send to your accountability buddy.</p>
+      <div class="export-options">
+        <button type="button" class="export-option" id="copy-today-option"><strong>Today’s progress</strong><span>Completed commitments and today’s log messages</span></button>
+        <button type="button" class="export-option" id="copy-commitments-option"><strong>All commitments</strong><span>Numbered list with descriptions and target rates</span></button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="goal-history-dialog">
+    <div class="history-dialog-content">
+      <div class="dialog-header"><div><p class="eyebrow">DATA ENTRIES</p><h2 id="goal-history-title"></h2></div><button type="button" class="close-button" id="goal-history-close" aria-label="Close data entry history">×</button></div>
+      <p class="dialog-copy" id="goal-history-summary"></p>
+      <div class="goal-history-list" id="goal-history-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="summary-charts-dialog">
+    <div class="summary-charts-content">
+      <div class="dialog-header"><div><p class="eyebrow">BREAKDOWN</p><h2>Where the totals come from</h2></div><button type="button" class="close-button" id="summary-charts-close" aria-label="Close summary charts">×</button></div>
+      <p class="dialog-copy">Tap a colored section or commitment name to see its share of the total.</p>
+      <div id="summary-charts"></div>
+    </div>
+  </dialog>
+
+  <dialog id="calendar-dialog">
+    <form method="dialog" id="calendar-form">
+      <div class="dialog-header"><div><p class="eyebrow">SCHEDULE</p><h2 id="calendar-goal-title"></h2></div><button type="button" class="close-button" id="calendar-dialog-close" aria-label="Cancel calendar scheduling">×</button></div>
+      <p class="dialog-copy">Choose a time block, then review and save the prepared event in Google Calendar.</p>
+      <div class="calendar-fields">
+        <label class="field">Date<input id="calendar-date" type="date" required /></label>
+        <label class="field">Start time<input id="calendar-time" type="time" required /></label>
+        <label class="field">Duration (minutes)<input id="calendar-duration" type="number" inputmode="numeric" min="1" step="1" required /></label>
+      </div>
+      <p class="privacy-note">Bee Today does not access your calendar. Google Calendar opens with a prepared event, and nothing is added until you tap Save there.</p>
+      <button value="default" class="primary-button" id="open-google-calendar">Open Google Calendar</button>
     </form>
   </dialog>
 
@@ -131,17 +217,26 @@
     <article class="goal-card">
       <div class="urgency-stripe"></div>
       <div class="goal-content">
-        <div class="goal-topline"><div class="goal-title-wrap"><h3 class="goal-slug"></h3><p class="description"></p></div><div class="goal-actions"><div class="today-status"></div><button class="edit-goal-button" type="button" aria-label="Edit goal description">✎</button></div></div>
-        <p class="fineprint" hidden></p>
+        <div class="goal-topline"><div class="goal-title-wrap"><h3 class="goal-slug"></h3><p class="description"></p></div><div class="goal-actions"><button class="today-status" type="button"></button><button class="add-data-button" type="button">+ Data</button><button class="calendar-button" type="button" aria-label="Schedule in Google Calendar">Cal</button><button class="edit-goal-button" type="button" aria-label="Edit goal description">✎</button></div></div>
+        <div class="goal-checklist"></div>
         <div class="rate-comparison"><div class="rate-heading"><strong class="rate-label"></strong><span class="rate-values"></span></div><div class="rate-progress"><span></span></div></div>
-        <p class="derail-summary"></p>
-        <div class="goal-footer"><div class="tags"></div><div class="safety-pill"></div></div>
+        <div class="goal-summary-row"><p class="derail-summary"></p><div class="goal-timing"><span class="time-pill" hidden></span><span class="safety-pill"></span></div></div>
+        <div class="tags"></div>
       </div>
     </article>
   </template>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="projection.js?v=20"></script>
+  <script src="workload-units.js?v=65"></script>
+  <script src="projection.js?v=65"></script>
   <script src="goal-stats.js?v=20"></script>
-  <script src="app.js?v=20"></script>
+  <script src="dashboard-summary.js?v=65"></script>
+  <script src="goal-metadata.js?v=28"></script>
+  <script src="goal-search.js?v=30"></script>
+  <script src="goal-filters.js?v=50"></script>
+  <script src="goal-checklist.js?v=36"></script>
+  <script src="workload-history.js?v=65"></script>
+  <script src="google-calendar.js?v=40"></script>
+  <script src="accountability.js?v=53"></script>
+  <script src="app.js?v=65"></script>
 </body>
 </html>
