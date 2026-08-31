@@ -1,5 +1,5 @@
-const CACHE='bee-today-v65';
-const ASSETS=['./','./index.html','./styles.css?v=65','./workload-units.js?v=65','./projection.js?v=65','./goal-stats.js?v=20','./dashboard-summary.js?v=65','./goal-metadata.js?v=28','./goal-search.js?v=30','./goal-filters.js?v=50','./goal-checklist.js?v=36','./workload-history.js?v=65','./google-calendar.js?v=40','./accountability.js?v=53','./app.js?v=65','./version.json','./manifest.webmanifest','./icons/icon.svg'];
+const CACHE='bee-today-v66';
+const ASSETS=['./','./index.html','./styles.css?v=66','./workload-units.js?v=66','./projection.js?v=66','./goal-stats.js?v=20','./dashboard-summary.js?v=66','./goal-metadata.js?v=28','./goal-search.js?v=30','./goal-filters.js?v=50','./goal-checklist.js?v=36','./workload-history.js?v=66','./google-calendar.js?v=40','./accountability.js?v=53','./app.js?v=66','./version.json','./manifest.webmanifest','./icons/icon.svg'];
 
 self.addEventListener('install',event=>event.waitUntil(
   caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())
