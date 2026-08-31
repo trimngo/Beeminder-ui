@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.63';
+const APP_VERSION = '1.0.64';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -297,10 +297,20 @@ function renderWorkdayCountdown() {
   row.style.setProperty('--required-percent', `${progress.requiredPercent}%`);
   row.style.setProperty('--danger-percent', `${progress.dangerPercent}%`);
   row.style.setProperty('--warning-percent', `${progress.warningPercent}%`);
+  const thresholdPositions = {
+    '--warning-two-position': 100 - progress.warningPercent,
+    '--warning-one-position': 100 - progress.dangerPercent,
+    '--start-by-position': 100 - progress.requiredPercent
+  };
+  Object.entries(thresholdPositions).forEach(([name, position]) => row.style.setProperty(name, `${position}%`));
   const thresholds = BeeDashboardSummary.workdayThresholds(workloadMinutes, 8, 21);
   $('#workday-warning-two').textContent = BeeDashboardSummary.formatTimeOfDay(thresholds.warningTwoHours);
   $('#workday-warning-one').textContent = BeeDashboardSummary.formatTimeOfDay(thresholds.warningOneHour);
   $('#workday-start-by').textContent = BeeDashboardSummary.formatTimeOfDay(thresholds.deadline);
+  [['#workday-warning-two', thresholdPositions['--warning-two-position']], ['#workday-warning-one', thresholdPositions['--warning-one-position']], ['#workday-start-by', thresholdPositions['--start-by-position']]].forEach(([selector, position]) => {
+    const marker = $(selector).parentElement;
+    marker.classList.toggle('near-left', position < 18); marker.classList.toggle('near-right', position > 82);
+  });
   const axis = $('#workday-axis'); axis.innerHTML = '';
   for (let hour = 8; hour <= 21; hour += 1) {
     const label = document.createElement('span'); label.style.left = `${(hour - 8) / 13 * 100}%`;
