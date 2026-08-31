@@ -65,5 +65,9 @@ assert.equal(summary.workdayCountdownStatus(3600, 60), 'critical');
 assert.equal(summary.workdayCountdownStatus(0, 60), 'expired');
 assert.deepEqual(summary.workdayProgress(6.5 * 3600, 60), { remainingPercent: 50, elapsedPercent: 50, requiredPercent: 100 / 13, dangerPercent: 200 / 13, warningPercent: 300 / 13 });
 assert.deepEqual(summary.workdayProgress(99 * 3600, 99 * 60), { remainingPercent: 100, elapsedPercent: 0, requiredPercent: 100, dangerPercent: 100, warningPercent: 100 });
+assert.deepEqual(summary.workdayThresholds(90), { warningTwoHours: 1050, warningOneHour: 1110, deadline: 1170 });
+assert.deepEqual(summary.workdayThresholds(900), { warningTwoHours: 480, warningOneHour: 480, deadline: 480 });
+assert.equal(summary.formatTimeOfDay(1050), '5:30 PM');
+assert.equal(summary.formatTimeOfDay(720), '12:00 PM');
 
 console.log('dashboard summary tests passed');

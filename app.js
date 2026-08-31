@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.62';
+const APP_VERSION = '1.0.63';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -297,17 +297,21 @@ function renderWorkdayCountdown() {
   row.style.setProperty('--required-percent', `${progress.requiredPercent}%`);
   row.style.setProperty('--danger-percent', `${progress.dangerPercent}%`);
   row.style.setProperty('--warning-percent', `${progress.warningPercent}%`);
-  const segments = $('#workday-segments'); segments.innerHTML = '';
-  const workload = BeeDashboardSummary.workloadBreakdown(state.goals, true);
-  const workloadTotal = workload.reduce((sum, item) => sum + item.value, 0);
-  workload.forEach(item => {
-    const segment = document.createElement('i'); segment.style.cssText = `--segment-share:${workloadTotal ? item.value / workloadTotal * 100 : 0}%;--segment-hue:${BeeWorkloadHistory.goalHue(item.slug)}`;
-    segment.title = `${item.slug}: ${BeeDashboardSummary.formatDuration(item.value)}`; segments.append(segment);
-  });
+  const thresholds = BeeDashboardSummary.workdayThresholds(workloadMinutes, 8, 21);
+  $('#workday-warning-two').textContent = BeeDashboardSummary.formatTimeOfDay(thresholds.warningTwoHours);
+  $('#workday-warning-one').textContent = BeeDashboardSummary.formatTimeOfDay(thresholds.warningOneHour);
+  $('#workday-start-by').textContent = BeeDashboardSummary.formatTimeOfDay(thresholds.deadline);
+  const axis = $('#workday-axis'); axis.innerHTML = '';
+  for (let hour = 8; hour <= 21; hour += 1) {
+    const label = document.createElement('span'); label.style.left = `${(hour - 8) / 13 * 100}%`;
+    label.textContent = hour === 8 ? '8a' : hour === 12 ? '12p' : hour === 21 ? '9p' : String(hour % 12 || 12);
+    label.classList.toggle('noon', hour === 12); axis.append(label);
+  }
   const slackMinutes = (seconds - workloadMinutes * 60) / 60;
   $('#workday-slack').textContent = seconds === 0 ? 'Workday ended' : slackMinutes >= 0
     ? `${BeeDashboardSummary.formatDuration(slackMinutes)} beyond today’s minimum`
     : `${BeeDashboardSummary.formatDuration(Math.abs(slackMinutes))} short of today’s minimum`;
+  row.setAttribute('aria-label', `Workday time remaining ${value.textContent}. Start by ${BeeDashboardSummary.formatTimeOfDay(thresholds.deadline)} to finish today's minimum workload.`);
 }
 function forecastDayLabel(daystamp, offset) {
   if (offset === 0) return 'Today';

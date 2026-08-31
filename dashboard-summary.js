@@ -135,5 +135,17 @@
     };
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown, workdayCountdownStatus, workdayProgress };
+  function workdayThresholds(workloadMinutes, startHour = 8, endHour = 21) {
+    const start = startHour * 60, end = endHour * 60;
+    const deadline = Math.max(start, end - Math.max(0, Number(workloadMinutes) || 0));
+    return { warningTwoHours: Math.max(start, deadline - 120), warningOneHour: Math.max(start, deadline - 60), deadline };
+  }
+
+  function formatTimeOfDay(minutes) {
+    const value = Math.max(0, Math.round(Number(minutes) || 0));
+    const hour = Math.floor(value / 60) % 24, minute = value % 60;
+    return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+  }
+
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown, workdayCountdownStatus, workdayProgress, workdayThresholds, formatTimeOfDay };
 }));
