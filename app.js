@@ -6,20 +6,20 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.65';
+const APP_VERSION = '1.0.67';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
 const $ = selector => document.querySelector(selector);
 const state = {
-  goals: [], query: '', tagFilters: {}, maxSafeDays: '', forecastOffsets: [], sort: 'urgency', editingSlug: null, dataEntrySlug: null, calendarSlug: null, refreshingSafetySlug: null, usingSample: false,
+  goals: [], query: '', tagFilters: {}, maxSafeDays: '', forecastOffsets: [], sort: 'urgency', editingSlug: null, dataEntrySlug: null, editingDatapointId: null, calendarSlug: null, refreshingSafetySlug: null, usingSample: false,
   mode: IS_LOCAL_TEST && TEST_PARAMS.get('mode') === 'timeline' ? 'timeline' : localStorage.getItem('bee-mode') || 'list', timeZone: localStorage.getItem('bee-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
   futureDays: IS_LOCAL_TEST && TEST_PARAMS.get('future') ? Number(TEST_PARAMS.get('future')) : Number(localStorage.getItem('bee-future-days')) || 7
 };
 const els = {
   list: $('#goal-list'), empty: $('#empty-state'), search: $('#search-input'), clear: $('#clear-search'),
   safeDays: $('#safe-days-filter'), sort: $('#sort-select'),
-  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), calendarDialog: $('#calendar-dialog'), accountabilityDialog: $('#accountability-dialog'), historyDialog: $('#goal-history-dialog'), summaryChartsDialog: $('#summary-charts-dialog'), toast: $('#toast')
+  settingsDialog: $('#settings-dialog'), editDialog: $('#edit-dialog'), dataDialog: $('#data-dialog'), calendarDialog: $('#calendar-dialog'), accountabilityDialog: $('#accountability-dialog'), summaryChartsDialog: $('#summary-charts-dialog'), toast: $('#toast')
 };
 
 function cleanText(text = '') { return String(text).replace(/\s(?:\d{10})$/, '').trim(); }
@@ -222,8 +222,8 @@ function render() {
       ? `${formatDailyRate(BeeWorkloadUnits.remainingUnitsForWorkBlock(goal))} left today`
       : 'No data today';
     status.classList.toggle('complete', goal.doneToday);
-    status.setAttribute('aria-label', `Show all data entries for ${goal.slug}`);
-    status.onclick = () => openGoalHistory(goal.slug);
+    status.setAttribute('aria-label', `Add or edit data entries for ${goal.slug}`);
+    status.onclick = () => openDataEntry(goal.slug);
     node.querySelector('.edit-goal-button').onclick = () => openGoalEditor(goal.slug);
     const calendarButton = node.querySelector('.calendar-button');
     calendarButton.disabled = !(Number(goal.minutesPerUnit) > 0);
@@ -231,8 +231,6 @@ function render() {
     calendarButton.setAttribute('aria-label', `Schedule ${goal.slug} in Google Calendar`);
     calendarButton.onclick = () => openCalendarDialog(goal.slug);
     const addDataButton = node.querySelector('.add-data-button');
-    addDataButton.disabled = state.usingSample;
-    addDataButton.title = state.usingSample ? 'Data entry is unavailable for local test data' : '';
     addDataButton.onclick = () => openDataEntry(goal.slug);
     const tagWrap = node.querySelector('.tags');
     const visibleTags = goalTagNames(goal).map(tag => `#${tag}`);
@@ -516,44 +514,64 @@ async function saveGoalTitle() {
   const updated = await response.json(), normalized = normalizeGoal({ ...goal, rawTitle: cleanText(updated.title || title), fineprint: updated.fineprint ?? goal.fineprint }); Object.assign(goal, normalized); persistGoals(); render();
 }
 function openDataEntry(slug) {
-  if (state.usingSample) { toast('Connect to Beeminder to enter data'); return; }
   state.dataEntrySlug = slug;
   $('#data-goal-slug').textContent = slug;
+  resetDataEditor();
+  renderDataEntryHistory();
+  $('#save-data-button').disabled = state.usingSample;
+  $('#save-data-button').title = state.usingSample ? 'Connect to Beeminder to save data' : '';
+  els.dataDialog.showModal();
+  $('#data-value').focus();
+}
+function resetDataEditor() {
+  state.editingDatapointId = null;
+  $('#data-dialog-mode').textContent = 'ADD DATA';
   $('#data-value').value = '';
   $('#data-comment').value = '';
   $('#data-error').hidden = true;
-  els.dataDialog.showModal();
-  $('#data-value').focus();
+  $('#save-data-button').textContent = 'Add data to Beeminder';
+  $('#cancel-data-edit').hidden = true;
 }
 function historyDateLabel(daystamp) {
   if (!/^\d{8}$/.test(daystamp || '')) return daystamp || 'Date unavailable';
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8))));
   return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
 }
-function openGoalHistory(slug) {
-  const goal = state.goals.find(item => item.slug === slug);
+function renderDataEntryHistory() {
+  const goal = state.goals.find(item => item.slug === state.dataEntrySlug);
   if (!goal) return;
   const entries = [...goal.datapoints].sort((a, b) =>
     String(b.daystamp || '').localeCompare(String(a.daystamp || '')) || Number(b.timestamp || 0) - Number(a.timestamp || 0)
   );
-  $('#goal-history-title').textContent = goal.slug;
-  $('#goal-history-summary').textContent = `${entries.length} data entr${entries.length === 1 ? 'y' : 'ies'}`;
-  const list = $('#goal-history-list'); list.innerHTML = '';
+  $('#data-entry-history-summary').textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}`;
+  const list = $('#data-entry-history-list'); list.innerHTML = '';
   if (!entries.length) {
     const empty = document.createElement('p'); empty.className = 'history-empty'; empty.textContent = 'No data entries yet.'; list.append(empty);
   }
   entries.forEach(point => {
-    const entry = document.createElement('article'); entry.className = `history-entry${isDerailDatapoint(point) ? ' derail' : ''}`;
+    const entry = document.createElement('button'); entry.type = 'button'; entry.className = `history-entry${isDerailDatapoint(point) ? ' derail' : ''}`;
     const heading = document.createElement('div'); heading.className = 'history-entry-heading';
     const date = document.createElement('strong'); date.textContent = historyDateLabel(point.daystamp);
     const value = document.createElement('span'); value.textContent = `Value: ${point.value ?? '—'}`;
     heading.append(date, value); entry.append(heading);
     const comment = document.createElement('p'); comment.textContent = point.comment?.trim() || 'No comment'; comment.classList.toggle('empty-comment', !point.comment?.trim()); entry.append(comment);
+    entry.disabled = !point.id || state.usingSample;
+    entry.title = !point.id ? 'This entry cannot be edited because it has no Beeminder ID' : state.usingSample ? 'Local test entries cannot be edited' : 'Edit this entry';
+    entry.setAttribute('aria-label', `Edit entry from ${historyDateLabel(point.daystamp)}, value ${point.value ?? 'unknown'}`);
+    entry.onclick = () => {
+      state.editingDatapointId = point.id;
+      $('#data-dialog-mode').textContent = 'EDIT DATA';
+      $('#data-value').value = point.value ?? '';
+      $('#data-comment').value = point.comment || '';
+      $('#data-error').hidden = true;
+      $('#save-data-button').textContent = 'Save changes to Beeminder';
+      $('#cancel-data-edit').hidden = false;
+      $('#data-value').focus();
+    };
     list.append(entry);
   });
-  els.historyDialog.showModal();
 }
-async function createDatapoint() {
+async function saveDatapoint() {
   const user = localStorage.getItem('bee-user'), token = localStorage.getItem('bee-token');
   const valueText = $('#data-value').value.trim(), value = Number(valueText);
   if (!user || !token) throw new Error('Connect to Beeminder before entering data');
@@ -562,10 +580,12 @@ async function createDatapoint() {
   const body = new URLSearchParams({ auth_token: token, value: valueText });
   const comment = $('#data-comment').value.trim();
   if (comment) body.set('comment', comment);
-  const response = await fetch(`https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}/goals/${encodeURIComponent(state.dataEntrySlug)}/datapoints.json`, {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body
+  const editing = state.editingDatapointId !== null;
+  const endpoint = editing ? `/datapoints/${encodeURIComponent(state.editingDatapointId)}.json` : '/datapoints.json';
+  const response = await fetch(`https://www.beeminder.com/api/v1/users/${encodeURIComponent(user)}/goals/${encodeURIComponent(state.dataEntrySlug)}${endpoint}`, {
+    method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body
   });
-  if (!response.ok) throw new Error(response.status === 401 ? 'Sign in again to enter data' : `Beeminder could not add this data (${response.status})`);
+  if (!response.ok) throw new Error(response.status === 401 ? 'Sign in again to save data' : `Beeminder could not ${editing ? 'update' : 'add'} this data (${response.status})`);
   return response.json();
 }
 async function refreshSubmittedGoal(slug, datapoint) {
@@ -677,7 +697,6 @@ async function copyAccountabilityExport(button, messageFactory, emptyMessage) {
 }
 $('#accountability-button').onclick = () => els.accountabilityDialog.showModal();
 $('#accountability-dialog-close').onclick = () => els.accountabilityDialog.close();
-$('#goal-history-close').onclick = () => els.historyDialog.close();
 $('#summary-charts-close').onclick = () => els.summaryChartsDialog.close();
 document.querySelectorAll('.summary-trigger').forEach(button => button.onclick = () => openSummaryCharts(button.dataset.chart));
 $('#edit-goal-close').onclick = () => els.editDialog.close();
@@ -696,6 +715,7 @@ $('#stats-settings').onclick = $('#settings-button').onclick;
 $('#future-days').onchange = event => { state.futureDays = Number(event.target.value); localStorage.setItem('bee-future-days', String(state.futureDays)); closeDatapointTooltip(); renderTimeline(); };
 $('#datapoint-tooltip-close').onclick = closeDatapointTooltip;
 $('#data-dialog-close').onclick = () => els.dataDialog.close();
+$('#cancel-data-edit').onclick = () => { resetDataEditor(); $('#data-value').focus(); };
 $('#calendar-dialog-close').onclick = () => els.calendarDialog.close();
 $('#empty-connect').onclick = () => els.settingsDialog.showModal();
 $('#auth-gate-button').onclick = () => els.settingsDialog.showModal();
@@ -712,14 +732,17 @@ $('#data-entry-form').onsubmit = async event => {
   if (event.submitter?.value === 'cancel') return;
   event.preventDefault();
   const button = $('#save-data-button'), error = $('#data-error');
-  button.disabled = true; button.textContent = 'Adding…'; error.hidden = true;
+  const editing = state.editingDatapointId !== null;
+  button.disabled = true; button.textContent = editing ? 'Saving…' : 'Adding…'; error.hidden = true;
   try {
     const slug = state.dataEntrySlug;
-    const datapoint = await createDatapoint();
-    BeeGoalChecklist.clear(localStorage, checklistUsername(), slug);
+    const datapoint = await saveDatapoint();
+    if (!editing) BeeGoalChecklist.clear(localStorage, checklistUsername(), slug);
     const submittedGoal = state.goals.find(item => item.slug === slug);
     if (submittedGoal) {
-      if (!submittedGoal.datapoints.some(point => point.id && point.id === datapoint?.id)) submittedGoal.datapoints.unshift(datapoint);
+      const existingIndex = submittedGoal.datapoints.findIndex(point => point.id && point.id === datapoint?.id);
+      if (existingIndex >= 0) submittedGoal.datapoints.splice(existingIndex, 1, datapoint);
+      else submittedGoal.datapoints.unshift(datapoint);
       submittedGoal.todayUnits = BeeWorkloadUnits.enteredUnitsOnDay(submittedGoal, todayDaystamp(state.timeZone));
       submittedGoal.doneToday = BeeWorkloadUnits.isWorkBlockComplete(submittedGoal, todayDaystamp(state.timeZone));
       state.refreshingSafetySlug = slug;
@@ -735,12 +758,13 @@ $('#data-entry-form').onsubmit = async event => {
     state.refreshingSafetySlug = null;
     render();
     els.dataDialog.close();
-    toast(safetyRefreshed ? 'Data added to Beeminder' : 'Data added · safety days are still refreshing');
+    const action = editing ? 'updated' : 'added';
+    toast(safetyRefreshed ? `Data ${action} in Beeminder` : `Data ${action} · safety days are still refreshing`);
   } catch (caught) {
     error.textContent = caught.message || 'Could not add data'; error.hidden = false;
     return;
   } finally {
-    button.disabled = false; button.textContent = 'Add data to Beeminder';
+    button.disabled = state.usingSample; button.textContent = editing ? 'Save changes to Beeminder' : 'Add data to Beeminder';
   }
 };
 $('#settings-form').onsubmit = async event => {
