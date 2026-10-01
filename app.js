@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.67';
+const APP_VERSION = '1.0.68';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -74,7 +74,7 @@ async function copyText(text) {
 }
 function createSampleGoals() {
   const today = todayDaystamp(state.timeZone);
-  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goal.actionValue || goalIndex + 1, comment: (goalIndex === 1 || goalIndex === 3) && index === 5 ? '#DERAIL' : index === 0 ? 'Completed today’s commitment' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
+  return sampleGoals.map((goal, goalIndex) => normalizeGoal({ ...goal, datapoints: Array.from({ length: 14 }, (_, index) => index).filter(index => (index + goalIndex) % (goalIndex % 3 + 2) === 0).map(index => ({ daystamp: shiftDaystamp(today, -index), value: goal.actionValue || goalIndex + 1, comment: (goalIndex === 1 || goalIndex === 3) && index === 5 ? '#DERAIL' : index === 0 ? 'Completed today’s commitment' : index === 2 ? 'Vacation' : `Test note from ${index} day${index === 1 ? '' : 's'} ago` })) }));
 }
 function shiftDaystamp(daystamp, days) {
   const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
@@ -102,6 +102,11 @@ function targetRatePerDay(goal) {
   const rate = Number(goal.rate), days = unitDays[goal.runits] || 1;
   return Number.isFinite(rate) ? rate / days : null;
 }
+function complianceExclusions() {
+  const saved = localStorage.getItem('bee-compliance-exclusions');
+  return saved === null ? BeeCompliance.DEFAULT_EXCLUSIONS : BeeCompliance.parseExclusions(saved);
+}
+function complianceExclusion(point) { return BeeCompliance.excludedTerm(point, complianceExclusions()); }
 function fourteenDayPerformance(goal) {
   const target = targetRatePerDay(goal);
   // A sum of datapoint values represents progress only for cumulative goals.
@@ -109,14 +114,10 @@ function fourteenDayPerformance(goal) {
   // not present a deceptively precise comparison for them.
   if (!goal.kyoom || !Number.isFinite(target) || target === 0) return { actual: null, target, miss: null };
   const today = todayDaystamp(state.timeZone), start = shiftDaystamp(today, -13);
-  const total = goal.datapoints.reduce((sum, point) => {
-    if (point.daystamp < start || point.daystamp > today) return sum;
-    const value = Number(point.value);
-    return sum + (Number.isFinite(value) ? value : 0);
-  }, 0);
+  const { total, excluded } = BeeCompliance.sumIncludedValues(goal.datapoints, complianceExclusions(), start, today);
   const actual = total / 14;
   const miss = target > 0 ? (target - actual) / Math.abs(target) : (actual - target) / Math.abs(target);
-  return { actual, target, miss, compliance: actual / target };
+  return { actual, target, miss, compliance: actual / target, excluded };
 }
 function formatDailyRate(value) {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
@@ -200,7 +201,7 @@ function render() {
       const percent = Math.round(performance.compliance * 100), progress = rateComparison.querySelector('.rate-progress');
       const boundedPercent = Math.max(0, Math.min(100, percent));
       rateComparison.querySelector('.rate-label').textContent = `${percent}% of target`;
-      rateComparison.querySelector('.rate-values').textContent = `${formatDailyRate(performance.actual)} / ${formatDailyRate(performance.target)} per day`;
+      rateComparison.querySelector('.rate-values').textContent = `${formatDailyRate(performance.actual)} / ${formatDailyRate(performance.target)} per day${performance.excluded ? ` · ${performance.excluded} excluded` : ''}`;
       progress.style.setProperty('--rate-progress', `${boundedPercent}%`);
       progress.setAttribute('role', 'progressbar');
       progress.setAttribute('aria-label', `${goal.slug} 14-day rate as a percentage of target`);
@@ -445,10 +446,13 @@ function showDatapointTooltip(goal, daystamp, datapoints) {
   $('#datapoint-tooltip-title').textContent = `${goal.slug} · ${dayLabel(daystamp, daystamp === todayDaystamp(state.timeZone) ? 0 : 1)}`;
   const content = $('#datapoint-tooltip-content'); content.innerHTML = '';
   datapoints.forEach(point => {
-    const entry = document.createElement('div'); entry.className = 'datapoint-detail';
+    const excludedBy = complianceExclusion(point);
+    const entry = document.createElement('div'); entry.className = 'datapoint-detail'; entry.classList.toggle('compliance-excluded', Boolean(excludedBy));
     const value = document.createElement('strong'), derailed = isDerailDatapoint(point); entry.classList.toggle('derail', derailed); value.textContent = `${derailed ? 'Derailment' : 'Data entered'}${point.value === undefined || point.value === null ? '' : ` · Value: ${point.value}`}`;
     const note = document.createElement('p'); note.textContent = point.comment?.trim() || 'No note for this entry.';
-    entry.append(value, note); content.append(entry);
+    entry.append(value);
+    if (excludedBy) { const badge = document.createElement('span'); badge.className = 'compliance-excluded-badge'; badge.textContent = `Excluded from compliance · “${excludedBy}”`; entry.append(badge); }
+    entry.append(note); content.append(entry);
   });
   $('#datapoint-tooltip').hidden = false;
 }
@@ -549,12 +553,15 @@ function renderDataEntryHistory() {
     const empty = document.createElement('p'); empty.className = 'history-empty'; empty.textContent = 'No data entries yet.'; list.append(empty);
   }
   entries.forEach(point => {
-    const entry = document.createElement('button'); entry.type = 'button'; entry.className = `history-entry${isDerailDatapoint(point) ? ' derail' : ''}`;
+    const excludedBy = complianceExclusion(point);
+    const entry = document.createElement('button'); entry.type = 'button'; entry.className = `history-entry${isDerailDatapoint(point) ? ' derail' : ''}`; entry.classList.toggle('compliance-excluded', Boolean(excludedBy));
     const heading = document.createElement('div'); heading.className = 'history-entry-heading';
     const date = document.createElement('strong'); date.textContent = historyDateLabel(point.daystamp);
     const value = document.createElement('span'); value.textContent = `Value: ${point.value ?? '—'}`;
     heading.append(date, value); entry.append(heading);
-    const comment = document.createElement('p'); comment.textContent = point.comment?.trim() || 'No comment'; comment.classList.toggle('empty-comment', !point.comment?.trim()); entry.append(comment);
+    const comment = document.createElement('p'); comment.textContent = point.comment?.trim() || 'No comment'; comment.classList.toggle('empty-comment', !point.comment?.trim());
+    if (excludedBy) { const badge = document.createElement('span'); badge.className = 'compliance-excluded-badge'; badge.textContent = `Excluded from compliance · “${excludedBy}”`; entry.append(badge); }
+    entry.append(comment);
     entry.disabled = !point.id || state.usingSample;
     entry.title = !point.id ? 'This entry cannot be edited because it has no Beeminder ID' : state.usingSample ? 'Local test entries cannot be edited' : 'Edit this entry';
     entry.setAttribute('aria-label', `Edit entry from ${historyDateLabel(point.daystamp)}, value ${point.value ?? 'unknown'}`);
@@ -706,7 +713,7 @@ $('#copy-today-option').onclick = event => copyAccountabilityExport(
 $('#copy-commitments-option').onclick = event => copyAccountabilityExport(
   event.currentTarget, () => BeeAccountability.commitmentsMessage(state.goals), 'No commitments to copy'
 );
-$('#settings-button').onclick = () => { $('#username').value = localStorage.getItem('bee-user') || ''; $('#auth-token').value = localStorage.getItem('bee-token') || ''; els.settingsDialog.showModal(); };
+$('#settings-button').onclick = () => { $('#username').value = localStorage.getItem('bee-user') || ''; $('#auth-token').value = localStorage.getItem('bee-token') || ''; $('#compliance-exclusions').value = complianceExclusions().join(', '); els.settingsDialog.showModal(); };
 $('#timeline-settings').onclick = $('#settings-button').onclick;
 $('#list-tab').onclick = () => setMode('list');
 $('#timeline-tab').onclick = () => setMode('timeline');
@@ -768,7 +775,11 @@ $('#data-entry-form').onsubmit = async event => {
   }
 };
 $('#settings-form').onsubmit = async event => {
-  if (event.submitter.value === 'cancel') return; event.preventDefault(); const user = $('#username').value.trim(), token = $('#auth-token').value.trim();
+  if (event.submitter.value === 'cancel') return; event.preventDefault();
+  const exclusions = BeeCompliance.parseExclusions($('#compliance-exclusions').value);
+  localStorage.setItem('bee-compliance-exclusions', exclusions.join(','));
+  render();
+  const user = $('#username').value.trim(), token = $('#auth-token').value.trim();
   if (!user || !token) { toast('Enter username and token'); return; }
   localStorage.setItem('bee-user', user); localStorage.setItem('bee-token', token); $('#connect-button').textContent = 'Connecting…';
   try {
