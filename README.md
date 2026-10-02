@@ -54,7 +54,7 @@ Connected data refreshes automatically on launch, whenever the app returns to th
 
 The compact **Export** button in the Commitments heading opens accountability sharing options. The daily export begins with **Today’s wins**, lists every completed commitment, omits placeholder text for entries without comments, and turns every nonempty line of a multiline comment into its own bullet. The other option copies a numbered list of every commitment with its slug, tag-free description, and target rate normalized to a weekly or multi-week cadence. Keeping the action in the heading preserves vertical space for the goal list.
 
-Each cumulative goal shows its average recorded value per calendar day over the 14-day window ending today, including zero-entry days, as a percentage-of-target progress bar. The exact actual and target daily rates remain beside the percentage. **Lowest compliance** and **Highest compliance** sort by that percentage so differently scaled commitments can be compared fairly. Settings can define case-insensitive comment words or phrases (default: `vacation`) whose matching datapoints are excluded from this calculation; excluded entries remain available everywhere else and are highlighted in datapoint lists. Non-cumulative readings and zero or missing targets are labeled unavailable rather than showing a misleading calculation; negative targets use the inverse comparison direction.
+Each cumulative goal shows its average recorded value per calendar day over a rolling window ending today (7 days by default, adjustable in Settings), including zero-entry days, as a percentage-of-target progress bar. The exact actual and target daily rates remain beside the percentage. **Lowest compliance** and **Highest compliance** sort by that percentage so differently scaled commitments can be compared fairly. Settings can define case-insensitive comment words or phrases (default: `vacation`) whose matching datapoints are excluded from this calculation; excluded entries remain available everywhere else and are highlighted in datapoint lists. Non-cumulative readings and zero or missing targets are labeled unavailable rather than showing a misleading calculation; negative targets use the inverse comparison direction.
 
 Cards also count explicit `#DERAIL` datapoints across the goal's full history. The paid total assumes a fixed, capped cost of $5 for every derail, so three derails are displayed as `$15 paid`.
 
@@ -73,3 +73,6 @@ Open `http://localhost:8000`. On iOS, deploy to GitHub Pages, open in Safari, an
 ## Deploy
 
 Enable GitHub Pages for the repository branch and root directory. All paths are relative, so project pages and custom domains are supported.
+
+
+The **Compliance** tab plots every comparable commitment’s rolling compliance ratio over time. The dotted target is 1×, the vertical scale expands for over-target work, and accessible legend toggles can emphasize any number of stable-color lines while leaving the others visible for context.
