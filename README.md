@@ -75,4 +75,4 @@ Open `http://localhost:8000`. On iOS, deploy to GitHub Pages, open in Safari, an
 Enable GitHub Pages for the repository branch and root directory. All paths are relative, so project pages and custom domains are supported.
 
 
-The **Compliance** tab plots every comparable commitment’s rolling compliance ratio over time. The dotted target is 1×, the vertical scale expands for over-target work, and accessible legend toggles can emphasize any number of stable-color lines while leaving the others visible for context.
+The **Compliance** tab plots every comparable commitment’s rolling compliance ratio over time. The dotted red target is 1×, independent X- and Y-axis controls adjust the visible scale, daily tick marks anchor the dates, and shaded weekends plus weekly dividers clarify week boundaries. Accessible legend toggles can emphasize any number of stable-color lines while leaving the others visible for context.

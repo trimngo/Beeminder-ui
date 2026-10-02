@@ -6,7 +6,7 @@ const sampleGoals = [
   { slug: 'connection', title: '{"m":15,"t":["social","quick"]} Reach out', fineprint: 'Make one request to connect', safebuf: 4, rate: 1, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 320 },
   { slug: 'read', title: '{"m":20,"t":["learning","deep"]} Read a book', fineprint: 'Read 20 focused pages', safebuf: 6, rate: 2, runits: 'w', quantum: 1, pledge: 0, doneToday: false, updated: 90 }
 ];
-const APP_VERSION = '1.0.69';
+const APP_VERSION = '1.0.70';
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const IS_LOCAL_TEST = ['localhost', '127.0.0.1'].includes(location.hostname);
 const TEST_PARAMS = new URLSearchParams(location.search);
@@ -15,6 +15,7 @@ const state = {
   goals: [], query: '', tagFilters: {}, maxSafeDays: '', forecastOffsets: [], sort: 'urgency', editingSlug: null, dataEntrySlug: null, editingDatapointId: null, calendarSlug: null, refreshingSafetySlug: null, usingSample: false,
   mode: IS_LOCAL_TEST && ['timeline', 'stats', 'compliance'].includes(TEST_PARAMS.get('mode')) ? TEST_PARAMS.get('mode') : localStorage.getItem('bee-mode') || 'list', timeZone: localStorage.getItem('bee-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone,
   complianceWindow: Math.max(1, Number.parseInt(localStorage.getItem('bee-compliance-window'), 10) || 7), complianceSelected: new Set(), complianceSelectionReady: false,
+  complianceXZoom: Math.min(64, Math.max(10, Number(localStorage.getItem('bee-compliance-x-zoom')) || 32)), complianceYZoom: Math.min(8, Math.max(.2, Number(localStorage.getItem('bee-compliance-y-zoom')) || 1)),
   futureDays: IS_LOCAL_TEST && TEST_PARAMS.get('future') ? Number(TEST_PARAMS.get('future')) : Number(localStorage.getItem('bee-future-days')) || 7
 };
 const els = {
@@ -393,11 +394,18 @@ function renderCompliance() {
   const start = earliest || shiftDaystamp(today, -29), days = [];
   for (let day = start; day <= today; day = shiftDaystamp(day, 1)) days.push(day);
   const series = goals.map(goal => ({ goal, values: BeeCompliance.rollingSeries(goal, start, today, state.complianceWindow, complianceExclusions()) }));
-  const maximum = Math.max(1.1, ...series.flatMap(item => item.values.map(value => Number.isFinite(value.compliance) ? value.compliance : 0)));
-  const width = Math.max(420, days.length * 18), height = 260, left = 4, right = 8, top = 10, bottom = 28, plotHeight = height - top - bottom;
+  const dataMaximum = Math.max(1.1, ...series.flatMap(item => item.values.map(value => Number.isFinite(value.compliance) ? value.compliance : 0)));
+  const maximum = Math.max(1.05, dataMaximum * state.complianceYZoom);
+  const width = Math.max(420, days.length * state.complianceXZoom), height = 260, left = 4, right = 8, top = 10, bottom = 28, plotHeight = height - top - bottom;
   host.innerHTML = ''; host.style.width = `${width}px`;
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', `0 0 ${width} ${height}`); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', `Rolling ${state.complianceWindow}-day compliance ratios for ${goals.length} commitments`);
   const y = value => top + (maximum - value) / maximum * plotHeight, x = index => left + index / Math.max(1, days.length - 1) * (width - left - right);
+  const dayWidth = days.length > 1 ? x(1) - x(0) : width - left - right;
+  days.forEach((day, index) => {
+    const weekday = new Date(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(4, 6)) - 1, Number(day.slice(6, 8)))).getUTCDay();
+    if (weekday === 0 || weekday === 6) { const shade = document.createElementNS(svg.namespaceURI, 'rect'); shade.setAttribute('x', Math.max(left, x(index) - dayWidth / 2)); shade.setAttribute('y', top); shade.setAttribute('width', dayWidth); shade.setAttribute('height', plotHeight); shade.classList.add('weekend-band'); svg.append(shade); }
+    if (weekday === 1) { const boundary = document.createElementNS(svg.namespaceURI, 'line'); boundary.setAttribute('x1', x(index)); boundary.setAttribute('x2', x(index)); boundary.setAttribute('y1', top); boundary.setAttribute('y2', top + plotHeight); boundary.classList.add('week-boundary'); svg.append(boundary); }
+  });
   [0, .25, .5, .75, 1].map(f => maximum * f).forEach(value => { const line = document.createElementNS(svg.namespaceURI, 'line'); line.setAttribute('x1', left); line.setAttribute('x2', width - right); line.setAttribute('y1', y(value)); line.setAttribute('y2', y(value)); line.classList.add(value === 0 ? 'baseline' : 'gridline'); svg.append(line); });
   const target = document.createElementNS(svg.namespaceURI, 'line'); target.setAttribute('x1', left); target.setAttribute('x2', width - right); target.setAttribute('y1', y(1)); target.setAttribute('y2', y(1)); target.classList.add('target-line'); svg.append(target);
   series.forEach(({ goal, values }) => {
@@ -405,7 +413,12 @@ function renderCompliance() {
     const flush = () => { if (segment.length < 2) { segment = []; return; } const line = document.createElementNS(svg.namespaceURI, 'polyline'); line.setAttribute('points', segment.join(' ')); line.style.setProperty('--line-hue', BeeWorkloadHistory.goalHue(goal.slug)); line.classList.add('compliance-line'); line.classList.toggle('selected', state.complianceSelected.has(goal.slug)); svg.append(line); segment = []; };
     values.forEach((value, index) => { if (!Number.isFinite(value.compliance)) flush(); else segment.push(`${x(index)},${y(value.compliance)}`); }); flush();
   });
-  days.forEach((day, index) => { if (index % Math.max(1, Math.ceil(days.length / 7)) && index !== days.length - 1) return; const label = document.createElementNS(svg.namespaceURI, 'text'); label.setAttribute('x', x(index)); label.setAttribute('y', height - 7); label.textContent = statsDayLabel(day); svg.append(label); });
+  days.forEach((day, index) => {
+    const tick = document.createElementNS(svg.namespaceURI, 'line'); tick.setAttribute('x1', x(index)); tick.setAttribute('x2', x(index)); tick.setAttribute('y1', top + plotHeight); tick.setAttribute('y2', top + plotHeight + 5); tick.classList.add('day-tick'); svg.append(tick);
+    const weekday = new Date(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(4, 6)) - 1, Number(day.slice(6, 8)))).getUTCDay();
+    if (weekday !== 1 && index !== 0 && index !== days.length - 1) return;
+    const label = document.createElementNS(svg.namespaceURI, 'text'); label.setAttribute('x', x(index)); label.setAttribute('y', height - 7); label.textContent = statsDayLabel(day); svg.append(label);
+  });
   host.append(svg); legend.innerHTML = ''; $('#compliance-subtitle').textContent = `Rolling ${state.complianceWindow}-day progress toward each target`;
   const axis = $('#compliance-y-axis'); axis.innerHTML = ''; [maximum, maximum * .75, maximum * .5, maximum * .25, 0].forEach(value => { const tick = document.createElement('span'); tick.textContent = `${formatDailyRate(value)}×`; axis.append(tick); });
   goals.forEach(goal => { const button = document.createElement('button'); button.type = 'button'; button.className = 'compliance-key'; button.style.setProperty('--line-hue', BeeWorkloadHistory.goalHue(goal.slug)); const selected = state.complianceSelected.has(goal.slug); button.setAttribute('aria-pressed', String(selected)); button.setAttribute('aria-label', `${selected ? 'Stop emphasizing' : 'Emphasize'} ${goal.slug} compliance line`); button.innerHTML = '<i></i><span></span>'; button.querySelector('span').textContent = goal.slug; button.onclick = () => { if (selected) state.complianceSelected.delete(goal.slug); else state.complianceSelected.add(goal.slug); renderCompliance(); }; legend.append(button); });
@@ -743,6 +756,19 @@ $('#stats-tab').onclick = () => setMode('stats');
 $('#stats-settings').onclick = $('#settings-button').onclick;
 $('#compliance-tab').onclick = () => setMode('compliance');
 $('#compliance-settings').onclick = $('#settings-button').onclick;
+function setComplianceZoom(axis, value) {
+  const scroll = document.querySelector('.compliance-chart-scroll');
+  const center = scroll?.scrollWidth ? (scroll.scrollLeft + scroll.clientWidth / 2) / scroll.scrollWidth : 0;
+  if (axis === 'x') { state.complianceXZoom = Math.min(64, Math.max(10, value)); localStorage.setItem('bee-compliance-x-zoom', String(state.complianceXZoom)); }
+  else { state.complianceYZoom = Math.min(8, Math.max(.2, value)); localStorage.setItem('bee-compliance-y-zoom', String(state.complianceYZoom)); }
+  renderCompliance();
+  if (axis === 'x' && scroll) scroll.scrollLeft = Math.max(0, center * scroll.scrollWidth - scroll.clientWidth / 2);
+}
+$('#compliance-x-out').onclick = () => setComplianceZoom('x', state.complianceXZoom / 1.25);
+$('#compliance-x-in').onclick = () => setComplianceZoom('x', state.complianceXZoom * 1.25);
+$('#compliance-y-out').onclick = () => setComplianceZoom('y', state.complianceYZoom * 1.25);
+$('#compliance-y-in').onclick = () => setComplianceZoom('y', state.complianceYZoom / 1.25);
+$('#compliance-zoom-reset').onclick = () => { state.complianceXZoom = 32; state.complianceYZoom = 1; localStorage.removeItem('bee-compliance-x-zoom'); localStorage.removeItem('bee-compliance-y-zoom'); renderCompliance(); };
 $('#future-days').onchange = event => { state.futureDays = Number(event.target.value); localStorage.setItem('bee-future-days', String(state.futureDays)); closeDatapointTooltip(); renderTimeline(); };
 $('#datapoint-tooltip-close').onclick = closeDatapointTooltip;
 $('#data-dialog-close').onclick = () => els.dataDialog.close();

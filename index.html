@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=69" />
+  <link rel="stylesheet" href="styles.css?v=70" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -130,6 +130,11 @@
           <div><h2 id="compliance-heading">Compliance history</h2><p id="compliance-subtitle">Rolling 7-day progress toward each target</p></div>
           <button class="icon-button compact" id="compliance-settings" aria-label="Open settings">⚙</button>
         </div>
+        <div class="compliance-zoom" aria-label="Chart zoom controls">
+          <span>X-axis</span><button type="button" id="compliance-x-out" aria-label="Zoom out on the date axis">−</button><button type="button" id="compliance-x-in" aria-label="Zoom in on the date axis">+</button>
+          <span>Y-axis</span><button type="button" id="compliance-y-out" aria-label="Zoom out on the compliance axis">−</button><button type="button" id="compliance-y-in" aria-label="Zoom in on the compliance axis">+</button>
+          <button type="button" id="compliance-zoom-reset">Reset</button>
+        </div>
         <div class="compliance-chart-layout"><div class="compliance-y-axis" id="compliance-y-axis" aria-hidden="true"></div><div class="compliance-chart-scroll"><div class="compliance-chart" id="compliance-chart"></div></div></div>
         <p class="compliance-note">The target line is 1×. Values above it mean the rolling target was exceeded.</p>
         <div class="compliance-legend" id="compliance-legend" aria-label="Choose commitments to emphasize"></div>
@@ -247,6 +252,6 @@
   <script src="workload-history.js?v=68"></script>
   <script src="google-calendar.js?v=40"></script>
   <script src="accountability.js?v=53"></script>
-  <script src="app.js?v=69"></script>
+  <script src="app.js?v=70"></script>
 </body>
 </html>
