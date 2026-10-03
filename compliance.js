@@ -30,5 +30,35 @@
     }, { total: 0, excluded: 0 });
   }
 
-  return { DEFAULT_EXCLUSIONS, parseExclusions, excludedTerm, isExcluded, sumIncludedValues };
+  function shiftDaystamp(daystamp, days) {
+    if (!/^\d{8}$/.test(String(daystamp))) return null;
+    const date = new Date(Date.UTC(Number(daystamp.slice(0, 4)), Number(daystamp.slice(4, 6)) - 1, Number(daystamp.slice(6, 8)) + days));
+    return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
+  }
+
+  function rollingPerformance(goal, endDaystamp, windowSize = 7, exclusions = DEFAULT_EXCLUSIONS) {
+    const days = Number(windowSize);
+    const unitDays = { h: 1 / 24, d: 1, w: 7, m: 30.4375, y: 365.25 };
+    const rate = Number(goal?.rate), period = unitDays[goal?.runits] || 1;
+    const dailyTarget = Number.isFinite(rate) ? rate / period : null;
+    if (!goal?.kyoom || !Number.isInteger(days) || days < 1 || !Number.isFinite(dailyTarget) || dailyTarget === 0 || !shiftDaystamp(endDaystamp, 0)) {
+      return { actual: null, target: dailyTarget, compliance: null, miss: null, excluded: 0 };
+    }
+    const startDaystamp = shiftDaystamp(endDaystamp, 1 - days);
+    const result = sumIncludedValues(goal.datapoints, exclusions, startDaystamp, endDaystamp);
+    const actual = result.total / days;
+    const miss = dailyTarget > 0 ? (dailyTarget - actual) / Math.abs(dailyTarget) : (actual - dailyTarget) / Math.abs(dailyTarget);
+    return { actual, target: dailyTarget, compliance: actual / dailyTarget, miss, excluded: result.excluded };
+  }
+
+  function rollingSeries(goal, startDaystamp, endDaystamp, windowSize = 7, exclusions = DEFAULT_EXCLUSIONS) {
+    if (!shiftDaystamp(startDaystamp, 0) || !shiftDaystamp(endDaystamp, 0) || startDaystamp > endDaystamp) return [];
+    const series = [];
+    for (let daystamp = startDaystamp; daystamp <= endDaystamp; daystamp = shiftDaystamp(daystamp, 1)) {
+      series.push({ daystamp, ...rollingPerformance(goal, daystamp, windowSize, exclusions) });
+    }
+    return series;
+  }
+
+  return { DEFAULT_EXCLUSIONS, parseExclusions, excludedTerm, isExcluded, sumIncludedValues, shiftDaystamp, rollingPerformance, rollingSeries };
 }));
