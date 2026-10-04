@@ -1,5 +1,5 @@
-const CACHE='bee-today-v68';
-const ASSETS=['./','./index.html','./styles.css?v=68','./workload-units.js?v=68','./projection.js?v=68','./goal-stats.js?v=20','./compliance.js?v=68','./dashboard-summary.js?v=68','./goal-metadata.js?v=28','./goal-search.js?v=30','./goal-filters.js?v=50','./goal-checklist.js?v=36','./workload-history.js?v=68','./google-calendar.js?v=40','./accountability.js?v=53','./app.js?v=68','./version.json','./manifest.webmanifest','./icons/icon.svg'];
+const CACHE='bee-today-v73';
+const ASSETS=['./','./index.html','./styles.css?v=73','./workload-units.js?v=68','./projection.js?v=68','./goal-stats.js?v=20','./compliance.js?v=69','./dashboard-summary.js?v=73','./goal-metadata.js?v=28','./goal-search.js?v=30','./goal-filters.js?v=50','./goal-checklist.js?v=36','./workload-history.js?v=68','./google-calendar.js?v=40','./accountability.js?v=73','./app.js?v=73','./version.json','./manifest.webmanifest','./icons/icon.svg'];
 
 self.addEventListener('install',event=>event.waitUntil(
   caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())

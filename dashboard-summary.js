@@ -147,5 +147,13 @@
     return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
   }
 
-  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown, workdayCountdownStatus, workdayProgress, workdayThresholds, formatTimeOfDay };
+  function formatDeadline(seconds) {
+    if (seconds === null || seconds === undefined || seconds === '') return null;
+    const value = Number(seconds);
+    if (!Number.isFinite(value)) return null;
+    const normalizedMinutes = ((Math.round(value / 60) % 1440) + 1440) % 1440;
+    return formatTimeOfDay(normalizedMinutes);
+  }
+
+  return { estimatedMinutesToSafety, goalsMissingTimeToSafety, estimatedMinutesForGoals, goalsMissingTime, workloadBreakdown, penaltyBreakdown, sevenDayWorkload, sevenDayCommitmentCounts, totalPenalties, formatDuration, formatCompactDuration, remainingWorkdaySeconds, formatCountdown, workdayCountdownStatus, workdayProgress, workdayThresholds, formatTimeOfDay, formatDeadline };
 }));

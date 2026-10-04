@@ -71,3 +71,8 @@ assert.equal(summary.formatTimeOfDay(1050), '5:30 PM');
 assert.equal(summary.formatTimeOfDay(720), '12:00 PM');
 
 console.log('dashboard summary tests passed');
+assert.equal(summary.formatDeadline(-10800), '9:00 PM');
+assert.equal(summary.formatDeadline(0), '12:00 AM');
+assert.equal(summary.formatDeadline(21600), '6:00 AM');
+assert.equal(summary.formatDeadline(null), null);
+assert.equal(summary.formatDeadline(undefined), null);
