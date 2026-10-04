@@ -42,6 +42,17 @@
     return `My commitments:\n\n${items.join('\n\n')}`;
   }
 
+  function projectsDataExport(goals, context = {}, exportedAt = new Date().toISOString()) {
+    if (!Array.isArray(goals) || !goals.length) return '';
+    return JSON.stringify({
+      format: 'bee-today-project-export',
+      schemaVersion: 1,
+      exportedAt,
+      context: { timeZone: context.timeZone || null, complianceWindowDays: Number(context.complianceWindow) || null, complianceExclusions: Array.isArray(context.complianceExclusions) ? context.complianceExclusions : [] },
+      projects: goals
+    }, null, 2);
+  }
+
   function todayWinsMessage(goals, today) {
     const completed = (Array.isArray(goals) ? goals : []).filter(goal =>
       (Array.isArray(goal.datapoints) ? goal.datapoints : []).some(point => point.daystamp === today)
@@ -57,5 +68,5 @@
     return `Today’s wins\n\n${items.join('\n\n')}`;
   }
 
-  return { formatGoalRate, commitmentsMessage, todayWinsMessage, withoutHashtags };
+  return { formatGoalRate, commitmentsMessage, projectsDataExport, todayWinsMessage, withoutHashtags };
 }));
