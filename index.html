@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=68" />
+  <link rel="stylesheet" href="styles.css?v=73" />
   <title>Bee Today</title>
 </head>
 <body>
@@ -20,6 +20,7 @@
         <button class="mode-tab active" id="list-tab" type="button" aria-selected="true">List</button>
         <button class="mode-tab" id="timeline-tab" type="button" aria-selected="false">Timeline</button>
         <button class="mode-tab" id="stats-tab" type="button" aria-selected="false">Stats</button>
+        <button class="mode-tab" id="compliance-tab" type="button" aria-selected="false">Compliance</button>
       </nav>
 
       <div class="test-data-banner" id="test-data-banner" hidden>LOCAL TEST DATA · NOT BEEMINDER</div>
@@ -124,6 +125,20 @@
         <div class="workload-detail" id="workload-detail"><strong>Select a bar</strong><span>See the commitments contributing to that day.</span></div>
         <p class="stats-note">Recorded workload is each positive datapoint value multiplied by that commitment's configured minutes per unit.</p>
       </section>
+      <section id="compliance-view" class="compliance-view" aria-labelledby="compliance-heading" hidden>
+        <div class="compliance-toolbar">
+          <div><h2 id="compliance-heading">Compliance history</h2><p id="compliance-subtitle">Rolling 7-day progress toward each target</p></div>
+          <button class="icon-button compact" id="compliance-settings" aria-label="Open settings">⚙</button>
+        </div>
+        <div class="compliance-zoom" aria-label="Chart zoom controls">
+          <span>X-axis</span><button type="button" id="compliance-x-out" aria-label="Zoom out on the date axis">−</button><button type="button" id="compliance-x-in" aria-label="Zoom in on the date axis">+</button>
+          <span>Y-axis</span><button type="button" id="compliance-y-out" aria-label="Zoom out on the compliance axis">−</button><button type="button" id="compliance-y-in" aria-label="Zoom in on the compliance axis">+</button>
+          <button type="button" id="compliance-zoom-reset">Reset</button>
+        </div>
+        <div class="compliance-chart-layout"><div class="compliance-y-axis" id="compliance-y-axis" aria-hidden="true"></div><div class="compliance-chart-scroll"><div class="compliance-chart" id="compliance-chart"></div></div></div>
+        <p class="compliance-note">The target line is 1×. Values above it mean the rolling target was exceeded.</p>
+        <div class="compliance-legend" id="compliance-legend" aria-label="Choose commitments to emphasize"></div>
+      </section>
     </main>
   </div>
 
@@ -135,7 +150,8 @@
       <label class="field">Personal auth token<input id="auth-token" type="password" autocomplete="off" placeholder="••••••••••••" /></label>
       <p class="privacy-note">Find your token in Beeminder → Account settings. This static app has no server.</p>
       <label class="field">Exclude from compliance when comments contain<input id="compliance-exclusions" placeholder="vacation, travel, sick" /></label>
-      <p class="privacy-note">Comma-separated and case-insensitive. Matching datapoints remain in Beeminder and elsewhere in the app, but do not count toward the 14-day compliance rate.</p>
+      <label class="field">Rolling compliance window (days)<input id="compliance-window" type="number" inputmode="numeric" min="1" step="1" required /></label>
+      <p class="privacy-note">Matching is case-insensitive. Excluded datapoints remain elsewhere in the app but do not count toward the selected rolling compliance window.</p>
       <button value="default" class="primary-button" id="connect-button">Connect & refresh</button>
       <button type="button" class="secondary-button full" id="disconnect-button">Sign out on this device</button>
       <button type="button" class="secondary-button full" id="sample-button" hidden>Use sample data (local testing)</button>
@@ -175,11 +191,12 @@
 
   <dialog id="accountability-dialog">
     <div class="export-dialog-content">
-      <div class="dialog-header"><div><p class="eyebrow">ACCOUNTABILITY</p><h2>Copy an update</h2></div><button type="button" class="close-button" id="accountability-dialog-close" aria-label="Close accountability exports">×</button></div>
-      <p class="dialog-copy">Choose what you want to send to your accountability buddy.</p>
+      <div class="dialog-header"><div><p class="eyebrow">EXPORT</p><h2>Copy your data</h2></div><button type="button" class="close-button" id="accountability-dialog-close" aria-label="Close exports">×</button></div>
+      <p class="dialog-copy">Copy an update to share, or complete structured project data for analysis.</p>
       <div class="export-options">
+        <button type="button" class="export-option" id="copy-plan-option"><strong>Daily plan</strong><span>WhatsApp-ready list of today’s commitments and the total time each needs</span></button>
         <button type="button" class="export-option" id="copy-today-option"><strong>Today’s progress</strong><span>Completed commitments and today’s log messages</span></button>
-        <button type="button" class="export-option" id="copy-commitments-option"><strong>All commitments</strong><span>Numbered list with descriptions and target rates</span></button>
+        <button type="button" class="export-option" id="copy-commitments-option"><strong>Complete project data</strong><span>AI-ready JSON with descriptions, time estimates, targets, deadlines, road data, and every loaded datapoint</span></button>
       </div>
     </div>
   </dialog>
@@ -218,7 +235,7 @@
         <div class="goal-topline"><div class="goal-title-wrap"><h3 class="goal-slug"></h3><p class="description"></p></div><div class="goal-actions"><button class="today-status" type="button"></button><button class="add-data-button" type="button">Add Data</button><button class="calendar-button" type="button" aria-label="Schedule in Google Calendar">Cal</button><button class="edit-goal-button" type="button" aria-label="Edit goal description">✎</button></div></div>
         <div class="goal-checklist"></div>
         <div class="rate-comparison"><div class="rate-heading"><strong class="rate-label"></strong><span class="rate-values"></span></div><div class="rate-progress"><span></span></div></div>
-        <div class="goal-summary-row"><p class="derail-summary"></p><div class="goal-timing"><span class="time-pill" hidden></span><span class="safety-pill"></span></div></div>
+        <div class="goal-summary-row"><p class="derail-summary"></p><div class="goal-timing"><span class="time-pill" hidden></span><span class="deadline-pill" hidden></span><span class="safety-pill"></span></div></div>
         <div class="tags"></div>
       </div>
     </article>
@@ -227,15 +244,15 @@
   <script src="workload-units.js?v=68"></script>
   <script src="projection.js?v=68"></script>
   <script src="goal-stats.js?v=20"></script>
-  <script src="compliance.js?v=68"></script>
-  <script src="dashboard-summary.js?v=68"></script>
+  <script src="compliance.js?v=69"></script>
+  <script src="dashboard-summary.js?v=73"></script>
   <script src="goal-metadata.js?v=28"></script>
   <script src="goal-search.js?v=30"></script>
-  <script src="goal-filters.js?v=50"></script>
+  <script src="goal-filters.js?v=74"></script>
   <script src="goal-checklist.js?v=36"></script>
   <script src="workload-history.js?v=68"></script>
   <script src="google-calendar.js?v=40"></script>
-  <script src="accountability.js?v=53"></script>
-  <script src="app.js?v=68"></script>
+  <script src="accountability.js?v=74"></script>
+  <script src="app.js?v=74"></script>
 </body>
 </html>
