@@ -1,16 +1,17 @@
 (function (root, factory) {
-  const api = factory();
+  const units = typeof module === 'object' && module.exports ? require('./workload-units.js') : root.BeeWorkloadUnits;
+  const api = factory(units);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.BeeGoalFilters = api;
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (WorkloadUnits) {
   function safeDaysAtMost(goal, maximum) {
     if (maximum === null || maximum === undefined || maximum === '') return true;
     const limit = Number(maximum), safeDays = Number(goal.safebuf);
     return Number.isFinite(limit) && Number.isFinite(safeDays) && safeDays <= limit;
   }
 
-  function compareMinutesPerUnit(a, b, direction = 'asc') {
-    const aMinutes = Number(a.minutesPerUnit), bMinutes = Number(b.minutesPerUnit);
+  function compareTimeNeededToday(a, b, direction = 'asc') {
+    const aMinutes = WorkloadUnits.minutesForRemainingWorkBlock(a), bMinutes = WorkloadUnits.minutesForRemainingWorkBlock(b);
     const aMissing = a.minutesPerUnit === null || a.minutesPerUnit === undefined || !Number.isFinite(aMinutes);
     const bMissing = b.minutesPerUnit === null || b.minutesPerUnit === undefined || !Number.isFinite(bMinutes);
     if (aMissing !== bMissing) return aMissing ? 1 : -1;
@@ -39,5 +40,5 @@
     );
   }
 
-  return { safeDaysAtMost, compareMinutesPerUnit, projectedOnDay, projectedOnSelectedDays, matchesTagStates };
+  return { safeDaysAtMost, compareTimeNeededToday, projectedOnDay, projectedOnSelectedDays, matchesTagStates };
 }));

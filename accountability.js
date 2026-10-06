@@ -1,8 +1,9 @@
 (function (root, factory) {
-  const api = factory();
+  const units = typeof module === 'object' && module.exports ? require('./workload-units.js') : root.BeeWorkloadUnits;
+  const api = factory(units);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.BeeAccountability = api;
-}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+}(typeof globalThis !== 'undefined' ? globalThis : this, function (WorkloadUnits) {
   const WEEKS_PER_UNIT = { h: 1 / 168, d: 1 / 7, w: 1, m: 30.4375 / 7, y: 365.25 / 7 };
 
   function formatNumber(value) {
@@ -42,6 +43,40 @@
     return `My commitments:\n\n${items.join('\n\n')}`;
   }
 
+  function projectsDataExport(goals, context = {}, exportedAt = new Date().toISOString()) {
+    if (!Array.isArray(goals) || !goals.length) return '';
+    return JSON.stringify({
+      format: 'bee-today-project-export',
+      schemaVersion: 1,
+      exportedAt,
+      context: { timeZone: context.timeZone || null, complianceWindowDays: Number(context.complianceWindow) || null, complianceExclusions: Array.isArray(context.complianceExclusions) ? context.complianceExclusions : [] },
+      projects: goals
+    }, null, 2);
+  }
+
+  function projectName(slug) {
+    const words = String(slug || 'Commitment').replace(/[-_]+/g, ' ');
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+
+  function planDuration(goal) {
+    const minutes = Number(goal?.minutesPerUnit);
+    if (!Number.isFinite(minutes) || minutes <= 0) return 'time not specified';
+    const total = WorkloadUnits.minutesForRemainingWorkBlock(goal);
+    if (total < 60) return `${formatNumber(total)} min`;
+    return `${formatNumber(total / 60)} hr`;
+  }
+
+  function dailyPlanMessage(goals) {
+    const due = (Array.isArray(goals) ? goals : []).filter(goal => !goal.doneToday && Number(goal.safebuf) <= 0);
+    if (!due.length) return '';
+    const items = due.map((goal, index) => {
+      const description = withoutHashtags(goal.title) || projectName(goal.slug);
+      return `${index + 1}. *${projectName(goal.slug)}* — ${description} — *${planDuration(goal)}*`;
+    });
+    return `*Today's plan*\n\n${items.join('\n')}`;
+  }
+
   function todayWinsMessage(goals, today) {
     const completed = (Array.isArray(goals) ? goals : []).filter(goal =>
       (Array.isArray(goal.datapoints) ? goal.datapoints : []).some(point => point.daystamp === today)
@@ -57,5 +92,5 @@
     return `Today’s wins\n\n${items.join('\n\n')}`;
   }
 
-  return { formatGoalRate, commitmentsMessage, todayWinsMessage, withoutHashtags };
+  return { formatGoalRate, commitmentsMessage, projectsDataExport, dailyPlanMessage, todayWinsMessage, withoutHashtags };
 }));
